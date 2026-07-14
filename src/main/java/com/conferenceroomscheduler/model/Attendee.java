@@ -5,7 +5,7 @@ public class Attendee extends User {
         super();
     }
 
-    public Attendee(String userId, String name, String email) {
-        super(userId, name, "ATTENDEE", email);
+    public Attendee(String userId, String name, String email, String password, boolean universityAccount, String identifier) {
+        super(userId, name, email, password, "ATTENDEE", universityAccount, !universityAccount, identifier);
     }
 }
