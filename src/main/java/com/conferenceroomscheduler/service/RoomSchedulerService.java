@@ -17,7 +17,12 @@ import com.conferenceroomscheduler.patterns.RoomFactory;
 import com.conferenceroomscheduler.patterns.RoomSensor;
 import com.conferenceroomscheduler.patterns.UserFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,9 +35,115 @@ public class RoomSchedulerService {
     private final RoomFactory roomFactory = new RoomFactory();
     private final ChiefEventCoordinator coordinator = ChiefEventCoordinator.getInstance();
     private final BookingContext bookingContext = new BookingContext();
+    private final Path accountsFile = Paths.get("data/accounts.csv");
+    private final Path roomsFile = Paths.get("data/rooms.csv");
+    private final Path reservationsFile = Paths.get("data/reservations.csv");
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private Account loggedInAccount;
 
     public RoomSchedulerService() {
         coordinator.registerObserver(new RoomSensor());
+        loadData();
+    }
+
+    public void loadData() {
+        loadAccounts();
+        loadRooms();
+        loadReservations();
+    }
+
+    public void saveData() {
+        saveAccounts();
+        saveRooms();
+        saveReservations();
+    }
+
+    private void loadAccounts() {
+        try {
+            List<String> lines = Files.readAllLines(accountsFile);
+            for (int i = 1; i < lines.size(); i++) {
+                String[] values = lines.get(i).split(",");
+                if (values.length >= 7) {
+                    accounts.add(new Account(values[0], values[1], values[2], values[3], Boolean.parseBoolean(values[4]), Boolean.parseBoolean(values[5]), values[6]));
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("No accounts file found; using empty data.");
+        }
+    }
+
+    private void loadRooms() {
+        try {
+            List<String> lines = Files.readAllLines(roomsFile);
+            for (int i = 1; i < lines.size(); i++) {
+                String[] values = lines.get(i).split(",");
+                if (values.length >= 7) {
+                    Room room = new Room(values[0], values[1], Integer.parseInt(values[2]), Boolean.parseBoolean(values[3]), values[5], values[6]);
+                    room.setClosedForMaintenance(Boolean.parseBoolean(values[4]));
+                    rooms.add(room);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("No rooms file found; using empty data.");
+        }
+    }
+
+    private void loadReservations() {
+        try {
+            List<String> lines = Files.readAllLines(reservationsFile);
+            for (int i = 1; i < lines.size(); i++) {
+                String[] values = lines.get(i).split(",");
+                if (values.length >= 15) {
+                    Reservation reservation = new Reservation(values[0], values[1], values[2], values[3], LocalDateTime.parse(values[4], formatter), LocalDateTime.parse(values[5], formatter), values[6], Double.parseDouble(values[7]), Double.parseDouble(values[8]), Double.parseDouble(values[9]), PaymentMethod.valueOf(values[10]));
+                    reservation.setCheckedIn(Boolean.parseBoolean(values[11]));
+                    reservation.setCanceled(Boolean.parseBoolean(values[12]));
+                    reservation.setExtended(Boolean.parseBoolean(values[13]));
+                    reservation.setDepositLost(Boolean.parseBoolean(values[14]));
+                    reservations.add(reservation);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("No reservations file found; using empty data.");
+        }
+    }
+
+    private void saveAccounts() {
+        try {
+            List<String> lines = new ArrayList<>();
+            lines.add("accountId,email,password,accountType,universityAccount,verified,identifier");
+            for (Account account : accounts) {
+                lines.add(String.join(",", account.getAccountId(), account.getEmail(), account.getPassword(), account.getAccountType(), Boolean.toString(account.isUniversityAccount()), Boolean.toString(account.isVerified()), account.getIdentifier()));
+            }
+            Files.write(reservationsFile.getParent().resolve("accounts.csv"), lines);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveRooms() {
+        try {
+            List<String> lines = new ArrayList<>();
+            lines.add("roomId,name,capacity,enabled,closedForMaintenance,building,roomNumber");
+            for (Room room : rooms) {
+                lines.add(String.join(",", room.getRoomId(), room.getName(), String.valueOf(room.getCapacity()), Boolean.toString(room.isEnabled()), Boolean.toString(room.isClosedForMaintenance()), room.getBuilding(), room.getRoomNumber()));
+            }
+            Files.write(roomsFile, lines);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveReservations() {
+        try {
+            List<String> lines = new ArrayList<>();
+            lines.add("reservationId,roomId,userId,title,startTime,endTime,accountType,hourlyRate,depositAmount,finalAmount,paymentMethod,checkedIn,canceled,extended,depositLost");
+            for (Reservation reservation : reservations) {
+                lines.add(String.join(",", reservation.getReservationId(), reservation.getRoomId(), reservation.getUserId(), reservation.getTitle(), reservation.getStartTime().format(formatter), reservation.getEndTime().format(formatter), reservation.getAccountType(), String.valueOf(reservation.getHourlyRate()), String.valueOf(reservation.getDepositAmount()), String.valueOf(reservation.getFinalAmount()), reservation.getPaymentMethod().name(), Boolean.toString(reservation.isCheckedIn()), Boolean.toString(reservation.isCanceled()), Boolean.toString(reservation.isExtended()), Boolean.toString(reservation.isDepositLost())));
+            }
+            Files.write(reservationsFile, lines);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public Account createAccount(String email, String password, String accountType,
@@ -47,6 +158,7 @@ public class RoomSchedulerService {
                 identifier
         );
         accounts.add(account);
+        saveData();
         return account;
     }
 
@@ -61,6 +173,7 @@ public class RoomSchedulerService {
         Room room = roomFactory.createRoom(roomId, name, capacity, building, roomNumber);
         if (room != null && room.isEnabled() && room.getCapacity() > 0) {
             rooms.add(room);
+            saveData();
             coordinator.notifyObservers("Room created: " + room.getName());
         }
         return room;
@@ -72,6 +185,7 @@ public class RoomSchedulerService {
 
     public void addReservation(Reservation reservation) {
         reservations.add(reservation);
+        saveData();
         coordinator.notifyObservers("Reservation created: " + reservation.getTitle());
         bookingContext.setState(new ConfirmedBookingState());
         bookingContext.request();
@@ -160,5 +274,19 @@ public class RoomSchedulerService {
 
     public void cancelBooking(Reservation reservation) {
         reservation.setCanceled(true);
+    }
+
+    public Account authenticate(String email, String password) {
+        for (Account account : accounts) {
+            if (account.getEmail().equalsIgnoreCase(email) && account.getPassword().equals(password)) {
+                loggedInAccount = account;
+                return account;
+            }
+        }
+        return null;
+    }
+
+    public Account getLoggedInAccount() {
+        return loggedInAccount;
     }
 }

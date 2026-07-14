@@ -1,0 +1,5 @@
+reservationId,roomId,userId,title,startTime,endTime,accountType,hourlyRate,depositAmount,finalAmount,paymentMethod,checkedIn,canceled,extended,depositLost
+RES1784054603453,R101,ACC1,Booking from GUI,2026-07-14 15:43,2026-07-14 16:43,student,20.0,20.0,20.0,CREDIT_CARD,false,false,false,false
+RES1784054604676,R101,ACC1,Booking from GUI,2026-07-14 15:43,2026-07-14 16:43,student,20.0,20.0,20.0,CREDIT_CARD,false,false,false,false
+RES1784054605140,R101,ACC1,Booking from GUI,2026-07-14 15:43,2026-07-14 16:43,student,20.0,20.0,20.0,CREDIT_CARD,false,false,false,false
+RES1784054605499,R101,ACC1,Booking from GUI,2026-07-14 15:43,2026-07-14 16:43,student,20.0,20.0,20.0,CREDIT_CARD,false,false,false,false

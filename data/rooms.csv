@@ -1,0 +1,5 @@
+roomId,name,capacity,enabled,closedForMaintenance,building,roomNumber
+R101,Meeting Room A,12,true,true,Ross Building,101
+R202,Conference Room B,30,true,false,Accolade East,202
+R1003,Room 3,13,true,false,Main Building,3
+R1004,Room 4,14,true,false,Main Building,4

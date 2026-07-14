@@ -1,5 +1,6 @@
 package com.conferenceroomscheduler.ui;
 
+import com.conferenceroomscheduler.model.Account;
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
@@ -15,66 +16,89 @@ public class SchedulerFrame extends JFrame {
     private final DefaultListModel<String> roomListModel = new DefaultListModel<>();
     private final JList<String> roomList = new JList<>(roomListModel);
     private final JTextArea outputArea = new JTextArea();
+    private final JTextField emailField = new JTextField();
+    private final JPasswordField passwordField = new JPasswordField();
+    private final JButton loginButton = new JButton("Login");
+    private final JButton addRoomButton = new JButton("Add Room");
+    private final JButton reserveButton = new JButton("Create Booking");
+    private final JButton maintenanceButton = new JButton("Close for Maintenance");
+    private final JButton refreshButton = new JButton("Refresh");
+    private Account currentAccount;
 
     public SchedulerFrame(RoomSchedulerService service) {
         this.service = service;
         setTitle("York University Room Booking System");
-        setSize(800, 550);
+        setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
         buildUI();
-        loadSampleData();
+        refreshRooms();
     }
 
     private void buildUI() {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
+        JPanel loginPanel = new JPanel(new GridLayout(1, 4, 5, 5));
+        loginPanel.add(new JLabel("Email"));
+        loginPanel.add(emailField);
+        loginPanel.add(new JLabel("Password"));
+        loginPanel.add(passwordField);
+
+        JPanel actionPanel = new JPanel(new GridLayout(1, 4, 5, 5));
+        actionPanel.add(loginButton);
+        actionPanel.add(addRoomButton);
+        actionPanel.add(reserveButton);
+        actionPanel.add(maintenanceButton);
+
+        JPanel topPanel = new JPanel(new BorderLayout(5, 5));
+        topPanel.add(loginPanel, BorderLayout.NORTH);
+        topPanel.add(actionPanel, BorderLayout.SOUTH);
+
         JPanel leftPanel = new JPanel(new BorderLayout(5, 5));
-        leftPanel.setPreferredSize(new Dimension(280, 0));
+        leftPanel.setPreferredSize(new Dimension(320, 0));
         leftPanel.add(new JLabel("Available Rooms"), BorderLayout.NORTH);
         leftPanel.add(new JScrollPane(roomList), BorderLayout.CENTER);
 
         JPanel rightPanel = new JPanel(new BorderLayout(5, 5));
         rightPanel.add(new JLabel("Event Services Actions"), BorderLayout.NORTH);
+        rightPanel.add(outputArea, BorderLayout.CENTER);
+        rightPanel.add(refreshButton, BorderLayout.SOUTH);
 
-        JButton addRoomButton = new JButton("Add Room");
-        JButton reserveButton = new JButton("Create Booking");
-        JButton maintenanceButton = new JButton("Close for Maintenance");
-        JButton refreshButton = new JButton("Refresh");
-
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 4, 5, 5));
-        buttonPanel.add(addRoomButton);
-        buttonPanel.add(reserveButton);
-        buttonPanel.add(maintenanceButton);
-        buttonPanel.add(refreshButton);
-        rightPanel.add(buttonPanel, BorderLayout.NORTH);
-
-        outputArea.setEditable(false);
-        outputArea.setLineWrap(true);
-        outputArea.setWrapStyleWord(true);
-        JScrollPane outputScroll = new JScrollPane(outputArea);
-        rightPanel.add(outputScroll, BorderLayout.CENTER);
-
+        loginButton.addActionListener(e -> login());
         addRoomButton.addActionListener(e -> addSampleRoom());
         reserveButton.addActionListener(e -> createSampleReservation());
         maintenanceButton.addActionListener(e -> closeRoomForMaintenance());
         refreshButton.addActionListener(e -> refreshRooms());
 
+        outputArea.setEditable(false);
+        outputArea.setLineWrap(true);
+        outputArea.setWrapStyleWord(true);
+
+        mainPanel.add(topPanel, BorderLayout.NORTH);
         mainPanel.add(leftPanel, BorderLayout.WEST);
         mainPanel.add(rightPanel, BorderLayout.CENTER);
         setContentPane(mainPanel);
     }
 
-    private void loadSampleData() {
-        service.createRoom("R101", "Meeting Room A", 12, "Ross Building", "101");
-        service.createRoom("R202", "Conference Room B", 30, "Accolade East", "202");
-        outputArea.setText("York University room booking system ready.\nRooms loaded from Event Services.");
+    private void login() {
+        String email = emailField.getText();
+        String password = new String(passwordField.getPassword());
+        Account account = service.authenticate(email, password);
+        if (account == null) {
+            outputArea.setText("Login failed. Use one of the CSV accounts.");
+            return;
+        }
+        currentAccount = account;
+        outputArea.setText("Logged in as " + account.getEmail() + " (" + account.getAccountType() + ")");
         refreshRooms();
     }
 
     private void addSampleRoom() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return;
+        }
         int nextId = service.getAllRooms().size() + 1;
         Room room = service.createRoom("R" + 100 + nextId, "Room " + nextId, 10 + nextId, "Main Building", String.valueOf(nextId));
         outputArea.append("\nAdded room: " + room.getName());
@@ -82,6 +106,10 @@ public class SchedulerFrame extends JFrame {
     }
 
     private void createSampleReservation() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return;
+        }
         List<Room> rooms = service.getAllRooms();
         if (rooms.isEmpty()) {
             outputArea.append("\nNo rooms available to reserve.");
@@ -92,14 +120,14 @@ public class SchedulerFrame extends JFrame {
         Reservation reservation = new Reservation(
                 "RES" + System.currentTimeMillis(),
                 selected.getRoomId(),
-                "U1",
-                "Student Team Meeting",
+                currentAccount.getAccountId(),
+                "Booking from GUI",
                 LocalDateTime.now().plusHours(1),
                 LocalDateTime.now().plusHours(2),
-                "student",
-                service.calculateHourlyRate("student"),
-                service.calculateHourlyRate("student"),
-                service.calculateHourlyRate("student"),
+                currentAccount.getAccountType(),
+                service.calculateHourlyRate(currentAccount.getAccountType()),
+                service.calculateHourlyRate(currentAccount.getAccountType()),
+                service.calculateHourlyRate(currentAccount.getAccountType()),
                 PaymentMethod.CREDIT_CARD
         );
         service.addReservation(reservation);
@@ -108,6 +136,10 @@ public class SchedulerFrame extends JFrame {
     }
 
     private void closeRoomForMaintenance() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return;
+        }
         List<Room> rooms = service.getAllRooms();
         if (rooms.isEmpty()) {
             outputArea.append("\nNo rooms to close.");
