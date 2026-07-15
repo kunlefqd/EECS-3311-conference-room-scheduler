@@ -7,11 +7,13 @@ import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
 import com.conferenceroomscheduler.model.User;
 import com.conferenceroomscheduler.patterns.BookingContext;
-import com.conferenceroomscheduler.patterns.CardPaymentStrategy;
+import com.conferenceroomscheduler.patterns.CreditCardPaymentStrategy;
 import com.conferenceroomscheduler.patterns.ChiefEventCoordinator;
 import com.conferenceroomscheduler.patterns.Command;
 import com.conferenceroomscheduler.patterns.ConfirmedBookingState;
 import com.conferenceroomscheduler.patterns.CreateBookingCommand;
+import com.conferenceroomscheduler.patterns.DebitCardPaymentStrategy;
+import com.conferenceroomscheduler.patterns.InstitutionalBillingPaymentStrategy;
 import com.conferenceroomscheduler.patterns.PaymentStrategy;
 import com.conferenceroomscheduler.patterns.RoomFactory;
 import com.conferenceroomscheduler.patterns.RoomSensor;
@@ -236,7 +238,11 @@ public class RoomSchedulerService {
     }
 
     public boolean processPayment(String bookingId, double amount, PaymentMethod paymentMethod) {
-        PaymentStrategy strategy = new CardPaymentStrategy();
+        PaymentStrategy strategy = switch (paymentMethod) {
+            case DEBIT_CARD -> new DebitCardPaymentStrategy();
+            case INSTITUTIONAL_BILLING -> new InstitutionalBillingPaymentStrategy();
+            case CREDIT_CARD -> new CreditCardPaymentStrategy();
+        };
         return strategy.processPayment(bookingId, amount);
     }
 
