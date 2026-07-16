@@ -23,9 +23,10 @@ These patterns align closely with the assignment requirements and are practical 
 
 # Run the GUI with:
 
-In Eclipse: Right-click on src/main/java and run as java application
-
 ```bash
 javac $(find src/main/java -name "*.java") -d out
 java -cp out com.conferenceroomscheduler.Main
 ```
+or
+
+In Eclipse: Right-click on src/main/java and run as java application
