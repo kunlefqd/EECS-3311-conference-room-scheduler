@@ -246,6 +246,24 @@ public class RoomSchedulerService {
         return strategy.processPayment(bookingId, amount);
     }
 
+
+    public Account createAdminAccount(String email, String password) {
+        com.conferenceroomscheduler.model.Admin admin = coordinator.generateAdminAccount(email, password);
+        Account account = new Account(
+                "ACC" + (accounts.size() + 1),
+                admin.getEmail(),
+                admin.getPassword(),
+                "ADMIN",
+                false,
+                true,
+                admin.getUserId()
+        );
+        accounts.add(account);
+        users.add(admin);
+        saveData();
+        return account;
+    }    
+    
     public UserFactory createUserFactory(String role) {
         if ("ADMIN".equalsIgnoreCase(role)) {
             return new com.conferenceroomscheduler.patterns.AdminFactory();
