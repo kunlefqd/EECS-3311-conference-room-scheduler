@@ -4,6 +4,7 @@ import com.conferenceroomscheduler.model.Account;
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
+import com.conferenceroomscheduler.patterns.BookingContext;
 import com.conferenceroomscheduler.service.RoomSchedulerService;
 
 import javax.swing.*;
@@ -37,6 +38,7 @@ public class SchedulerFrame extends JFrame {
     private final JPanel cards = new JPanel(cardLayout);
     private final JLabel welcomeLabel = new JLabel("Please sign in to continue");
     private Account currentAccount;
+    private BookingContext currentBookingContext;
 
     public SchedulerFrame(RoomSchedulerService service) {
         this.service = service;
@@ -276,9 +278,11 @@ public class SchedulerFrame extends JFrame {
                 service.calculateHourlyRate(currentAccount.getAccountType()),
                 PaymentMethod.CREDIT_CARD
         );
+        currentBookingContext = new BookingContext(reservation);
         service.addReservation(reservation);
         outputArea.append("\nCreated booking for: " + selected.getName());
-        refreshRooms();
+        outputArea.append(
+            "\nBooking Status: " + currentBookingContext.getStatus());
     }
 
     private void closeRoomForMaintenance() {

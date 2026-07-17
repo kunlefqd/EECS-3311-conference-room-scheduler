@@ -39,7 +39,7 @@ public class RoomSchedulerService {
     private final List<Account> accounts = new ArrayList<>();
     private final RoomFactory roomFactory = new RoomFactory();
     private final ChiefEventCoordinator coordinator = ChiefEventCoordinator.getInstance();
-    private final BookingContext bookingContext = new BookingContext();
+    private BookingContext bookingContext;
     private final Path accountsFile = Paths.get("data/accounts.csv");
     private final Path roomsFile = Paths.get("data/rooms.csv");
     private final Path reservationsFile = Paths.get("data/reservations.csv");
@@ -249,7 +249,7 @@ public class RoomSchedulerService {
         reservations.add(reservation);
         saveData();
         coordinator.notifyObservers("Reservation created: " + reservation.getTitle());
-        bookingContext.setState(new ConfirmedBookingState());
+        bookingContext = new BookingContext(reservation);
         bookingContext.request();
     }
 

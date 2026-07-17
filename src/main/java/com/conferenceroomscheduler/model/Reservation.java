@@ -18,6 +18,10 @@ public class Reservation {
     private boolean canceled;
     private boolean extended;
     private boolean depositLost;
+    
+
+   
+
 
     public Reservation() {
     }
