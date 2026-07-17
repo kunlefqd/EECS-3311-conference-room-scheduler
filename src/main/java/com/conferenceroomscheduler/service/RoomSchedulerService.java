@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -246,6 +247,28 @@ public class RoomSchedulerService {
     }
 
     public void addReservation(Reservation reservation) {
+        if (reservation == null) {
+            return;
+        }
+
+        double hourlyRate = reservation.getHourlyRate() > 0
+                ? reservation.getHourlyRate()
+                : calculateHourlyRate(reservation.getAccountType());
+        double depositAmount = reservation.getDepositAmount() > 0
+                ? reservation.getDepositAmount()
+                : hourlyRate;
+
+        double durationHours = Math.max(1.0, Duration.between(reservation.getStartTime(), reservation.getEndTime()).toMinutes() / 60.0);
+        double finalAmount = hourlyRate * durationHours;
+
+        reservation.setHourlyRate(hourlyRate);
+        reservation.setDepositAmount(depositAmount);
+        reservation.setFinalAmount(finalAmount);
+
+        if (reservation.getPaymentMethod() != null) {
+            processPayment(reservation.getReservationId(), depositAmount, reservation.getPaymentMethod());
+        }
+
         reservations.add(reservation);
         saveData();
         coordinator.notifyObservers("Reservation created: " + reservation.getTitle());
@@ -329,10 +352,16 @@ public class RoomSchedulerService {
     }
 
     public void applyCheckInRules(Reservation reservation, LocalDateTime checkInTime) {
+        if (reservation == null) {
+            return;
+        }
+
+        reservation.setCheckedIn(true);
         if (checkInTime.isAfter(reservation.getStartTime().plusMinutes(30))) {
             reservation.setDepositLost(true);
         } else {
             reservation.setDepositLost(false);
+            reservation.setFinalAmount(Math.max(0.0, reservation.getFinalAmount() - reservation.getDepositAmount()));
         }
     }
 

@@ -29,6 +29,7 @@ public class SchedulerFrame extends JFrame {
     private final JButton registerButton = new JButton("Register");
     private final JButton addRoomButton = new JButton("Add Room");
     private final JButton reserveButton = new JButton("Create Booking");
+    private final JComboBox<String> paymentMethodCombo = new JComboBox<>(new String[]{"CREDIT_CARD", "DEBIT_CARD", "INSTITUTIONAL_BILLING"});
     private final JButton maintenanceButton = new JButton("Close for Maintenance");
     private final JButton generateAdminButton = new JButton("Generate Admin Account");
     private final JButton refreshButton = new JButton("Refresh");
@@ -64,8 +65,9 @@ public class SchedulerFrame extends JFrame {
         topBar.add(welcomeLabel, BorderLayout.WEST);
         topBar.add(signOutButton, BorderLayout.EAST);
 
-        JPanel actionPanel = new JPanel(new GridLayout(1, 4, 5, 5));
+        JPanel actionPanel = new JPanel(new GridLayout(1, 6, 5, 5));
         actionPanel.add(reserveButton);
+        actionPanel.add(paymentMethodCombo);
         actionPanel.add(addRoomButton);
         actionPanel.add(maintenanceButton);
         actionPanel.add(generateAdminButton);
@@ -263,6 +265,7 @@ public class SchedulerFrame extends JFrame {
         }
 
         Room selected = rooms.get(selectedIndex);
+        PaymentMethod selectedPaymentMethod = PaymentMethod.valueOf((String) paymentMethodCombo.getSelectedItem());
         Reservation reservation = new Reservation(
                 "RES" + System.currentTimeMillis(),
                 selected.getRoomId(),
@@ -274,7 +277,7 @@ public class SchedulerFrame extends JFrame {
                 service.calculateHourlyRate(currentAccount.getAccountType()),
                 service.calculateHourlyRate(currentAccount.getAccountType()),
                 service.calculateHourlyRate(currentAccount.getAccountType()),
-                PaymentMethod.CREDIT_CARD
+                selectedPaymentMethod
         );
         service.addReservation(reservation);
         outputArea.append("\nCreated booking for: " + selected.getName());
