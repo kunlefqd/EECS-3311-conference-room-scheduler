@@ -2,6 +2,9 @@ package com.conferenceroomscheduler.model;
 
 public class Badge {
     private String email;
+    private String accountId;
+    private boolean verified;
+
     public String getEmail() {
         return email;
     }
@@ -10,8 +13,6 @@ public class Badge {
         this.email = email;
     }
 
-    private String accountId;
-    private boolean verified;
 
     public String getAccountId() {
         return accountId;
