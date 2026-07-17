@@ -21,9 +21,12 @@ These patterns align closely with the assignment requirements and are practical 
 - Observer naturally integrates room sensors with the scheduling system.
 - Command encapsulates booking and room-management operations, making the GUI easier to extend.
 
-Run the GUI with:
+# Run the GUI with:
 
 ```bash
 javac $(find src/main/java -name "*.java") -d out
 java -cp out com.conferenceroomscheduler.Main
 ```
+or
+
+In Eclipse: Right-click on src/main/java and run as java application

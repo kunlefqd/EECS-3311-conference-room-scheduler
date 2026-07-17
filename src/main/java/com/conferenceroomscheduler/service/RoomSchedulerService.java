@@ -306,6 +306,18 @@ public class RoomSchedulerService {
         return strategy.processPayment(bookingId, amount);
     }
 
+
+    /**
+     * Req2: admin accounts can only be minted through the Singleton chief event
+     * coordinator, which builds the account via the AdminFactory (Factory Method).
+     */
+    public Account createAdminAccount(String email, String password) {
+        Account admin = coordinator.generateAdminAccount("ACC" + (accounts.size() + 1), email, password);
+        accounts.add(admin);
+        saveData();
+        return admin;
+    }
+
     public double calculateHourlyRate(String role) {
         return switch (role.toLowerCase()) {
             case "student" -> 20.0;

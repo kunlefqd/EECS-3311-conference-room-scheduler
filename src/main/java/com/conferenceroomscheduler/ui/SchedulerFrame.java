@@ -30,6 +30,7 @@ public class SchedulerFrame extends JFrame {
     private final JButton addRoomButton = new JButton("Add Room");
     private final JButton reserveButton = new JButton("Create Booking");
     private final JButton maintenanceButton = new JButton("Close for Maintenance");
+    private final JButton generateAdminButton = new JButton("Generate Admin Account");
     private final JButton refreshButton = new JButton("Refresh");
     private final JButton signOutButton = new JButton("Sign Out");
     private final CardLayout cardLayout = new CardLayout();
@@ -67,6 +68,7 @@ public class SchedulerFrame extends JFrame {
         actionPanel.add(reserveButton);
         actionPanel.add(addRoomButton);
         actionPanel.add(maintenanceButton);
+        actionPanel.add(generateAdminButton);
         actionPanel.add(refreshButton);
 
         JPanel leftPanel = new JPanel(new BorderLayout(5, 5));
@@ -89,6 +91,7 @@ public class SchedulerFrame extends JFrame {
         addRoomButton.addActionListener(e -> addSampleRoom());
         reserveButton.addActionListener(e -> createSampleReservation());
         maintenanceButton.addActionListener(e -> closeRoomForMaintenance());
+        generateAdminButton.addActionListener(e -> generateAdminAccount());
         refreshButton.addActionListener(e -> refreshRooms());
         signOutButton.addActionListener(e -> signOut());
 
@@ -225,6 +228,7 @@ public class SchedulerFrame extends JFrame {
         reserveButton.setVisible(loggedIn);
         addRoomButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
         maintenanceButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
+        generateAdminButton.setVisible(loggedIn && "coordinator".equalsIgnoreCase(currentAccount.getAccountType()));
         refreshButton.setVisible(loggedIn);
         signOutButton.setVisible(loggedIn);
         welcomeLabel.setVisible(loggedIn);
@@ -284,6 +288,28 @@ public class SchedulerFrame extends JFrame {
         service.closeRoomForMaintenance(rooms.get(0).getRoomId());
         outputArea.append("\nClosed room for maintenance: " + rooms.get(0).getName());
         refreshRooms();
+    }
+    
+    private void generateAdminAccount() {
+        if (currentAccount == null || !"coordinator".equalsIgnoreCase(currentAccount.getAccountType())) {
+            outputArea.setText("Only the chief event coordinator can generate admin accounts.");
+            return;
+        }
+        JTextField newEmailField = new JTextField();
+        JPasswordField newPasswordField = new JPasswordField();
+        Object[] fields = {"New admin email:", newEmailField, "New admin password:", newPasswordField};
+        int result = JOptionPane.showConfirmDialog(this, fields, "Generate Admin Account", JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+        String newEmail = newEmailField.getText().trim();
+        String newPassword = new String(newPasswordField.getPassword());
+        if (newEmail.isEmpty() || newPassword.isEmpty()) {
+            outputArea.append("\nAdmin generation cancelled: email and password are required.");
+            return;
+        }
+        Account admin = service.createAdminAccount(newEmail, newPassword);
+        outputArea.append("\nGenerated admin account: " + admin.getEmail() + " (" + admin.getAccountId() + ")");
     }
 
     private void refreshRooms() {
