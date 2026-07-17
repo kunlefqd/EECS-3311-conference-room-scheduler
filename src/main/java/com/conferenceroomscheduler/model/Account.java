@@ -8,6 +8,7 @@ public class Account {
     private boolean universityAccount;
     private boolean verified;
     private String identifier;
+    private Badge badge;
 
     public Account() {
     }
@@ -21,6 +22,7 @@ public class Account {
         this.universityAccount = universityAccount;
         this.verified = verified;
         this.identifier = identifier;
+        this.badge = new Badge(email, accountId, verified);
     }
 
     public String getAccountId() {
@@ -77,5 +79,9 @@ public class Account {
 
     public void setIdentifier(String identifier) {
         this.identifier = identifier;
+    }
+    
+    public Badge getBadge() {
+        return badge;
     }
 }
