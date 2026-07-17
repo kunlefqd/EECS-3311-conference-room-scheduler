@@ -19,9 +19,18 @@ public class SchedulerFrame extends JFrame {
     private final JTextField emailField = new JTextField();
     private final JPasswordField passwordField = new JPasswordField();
     private final JButton loginButton = new JButton("Login");
+    private final JTextField registerEmailField = new JTextField();
+    private final JPasswordField registerPasswordField = new JPasswordField();
+    private final JPasswordField confirmPasswordField = new JPasswordField();
+    private final JComboBox<String> accountTypeCombo = new JComboBox<>(new String[]{
+            "student", "faculty", "staff", "partner"
+    });
+    private final JCheckBox universityAccountCheckBox = new JCheckBox("University account (requires verification)");
+    private final JButton registerButton = new JButton("Register");
     private final JButton addRoomButton = new JButton("Add Room");
     private final JButton reserveButton = new JButton("Create Booking");
     private final JButton maintenanceButton = new JButton("Close for Maintenance");
+    private final JButton generateAdminButton = new JButton("Generate Admin Account");
     private final JButton checkInButton = new JButton("Check In");
     private final JButton refreshButton = new JButton("Refresh");
     private final JButton signOutButton = new JButton("Sign Out");
@@ -41,25 +50,13 @@ public class SchedulerFrame extends JFrame {
     }
 
     private void buildUI() {
-        JPanel loginPanel = new JPanel(new BorderLayout(10, 10));
-        loginPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel authPanel = new JPanel(new BorderLayout(10, 10));
+        authPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JPanel loginForm = new JPanel(new GridLayout(3, 2, 8, 8));
-        loginForm.add(new JLabel("Email"));
-        loginForm.add(emailField);
-        loginForm.add(new JLabel("Password"));
-        loginForm.add(passwordField);
-        loginForm.add(new JLabel(""));
-        loginForm.add(loginButton);
-
-        JTextArea loginInfo = new JTextArea("Use one of the CSV accounts to sign in.\nStudent, faculty, staff, and partner accounts are available.");
-        loginInfo.setEditable(false);
-        loginInfo.setOpaque(false);
-        loginInfo.setLineWrap(true);
-        loginInfo.setWrapStyleWord(true);
-
-        loginPanel.add(loginInfo, BorderLayout.NORTH);
-        loginPanel.add(loginForm, BorderLayout.CENTER);
+        JTabbedPane authTabs = new JTabbedPane();
+        authTabs.addTab("Login", buildLoginTab());
+        authTabs.addTab("Register", buildRegisterTab());
+        authPanel.add(authTabs, BorderLayout.CENTER);
 
         JPanel dashboardPanel = new JPanel(new BorderLayout(10, 10));
         dashboardPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -72,6 +69,7 @@ public class SchedulerFrame extends JFrame {
         actionPanel.add(reserveButton);
         actionPanel.add(addRoomButton);
         actionPanel.add(maintenanceButton);
+        actionPanel.add(generateAdminButton);
         actionPanel.add(checkInButton);
         actionPanel.add(refreshButton);
 
@@ -91,9 +89,11 @@ public class SchedulerFrame extends JFrame {
 
         loginButton.addActionListener(e -> login());
         passwordField.addActionListener(e -> login());
+        registerButton.addActionListener(e -> register());
         addRoomButton.addActionListener(e -> addSampleRoom());
         reserveButton.addActionListener(e -> createSampleReservation());
         maintenanceButton.addActionListener(e -> closeRoomForMaintenance());
+        generateAdminButton.addActionListener(e -> generateAdminAccount());
         checkInButton.addActionListener(e -> checkIn());
         refreshButton.addActionListener(e -> refreshRooms());
         signOutButton.addActionListener(e -> signOut());
@@ -102,11 +102,69 @@ public class SchedulerFrame extends JFrame {
         outputArea.setLineWrap(true);
         outputArea.setWrapStyleWord(true);
 
-        cards.add(loginPanel, "login");
+        cards.add(authPanel, "login");
         cards.add(dashboardPanel, "dashboard");
         setContentPane(cards);
         cardLayout.show(cards, "login");
         updateActionVisibility();
+    }
+
+    private JPanel buildLoginTab() {
+        JPanel loginPanel = new JPanel(new BorderLayout(10, 10));
+        loginPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JPanel loginForm = new JPanel(new GridLayout(3, 2, 8, 8));
+        loginForm.add(new JLabel("Email"));
+        loginForm.add(emailField);
+        loginForm.add(new JLabel("Password"));
+        loginForm.add(passwordField);
+        loginForm.add(new JLabel(""));
+        loginForm.add(loginButton);
+
+        JTextArea loginInfo = new JTextArea(
+                "Log in with an existing account, or use the Register tab to create one.\n"
+                        + "Demo accounts are also available in the CSV data file."
+        );
+        loginInfo.setEditable(false);
+        loginInfo.setOpaque(false);
+        loginInfo.setLineWrap(true);
+        loginInfo.setWrapStyleWord(true);
+
+        loginPanel.add(loginInfo, BorderLayout.NORTH);
+        loginPanel.add(loginForm, BorderLayout.CENTER);
+        return loginPanel;
+    }
+
+    private JPanel buildRegisterTab() {
+        JPanel registerPanel = new JPanel(new BorderLayout(10, 10));
+        registerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JPanel registerForm = new JPanel(new GridLayout(6, 2, 8, 8));
+        registerForm.add(new JLabel("Email"));
+        registerForm.add(registerEmailField);
+        registerForm.add(new JLabel("Password"));
+        registerForm.add(registerPasswordField);
+        registerForm.add(new JLabel("Confirm Password"));
+        registerForm.add(confirmPasswordField);
+        registerForm.add(new JLabel("Account Type"));
+        registerForm.add(accountTypeCombo);
+        registerForm.add(new JLabel(""));
+        registerForm.add(universityAccountCheckBox);
+        registerForm.add(new JLabel(""));
+        registerForm.add(registerButton);
+
+        JTextArea registerInfo = new JTextArea(
+                "Create an account with a unique valid email and a strong password "
+                        + "(uppercase, lowercase, numbers, and symbols)."
+        );
+        registerInfo.setEditable(false);
+        registerInfo.setOpaque(false);
+        registerInfo.setLineWrap(true);
+        registerInfo.setWrapStyleWord(true);
+
+        registerPanel.add(registerInfo, BorderLayout.NORTH);
+        registerPanel.add(registerForm, BorderLayout.CENTER);
+        return registerPanel;
     }
 
     private void login() {
@@ -114,7 +172,8 @@ public class SchedulerFrame extends JFrame {
         String password = new String(passwordField.getPassword());
         Account account = service.authenticate(email, password);
         if (account == null) {
-            outputArea.setText("Login failed. Use one of the CSV accounts.");
+            JOptionPane.showMessageDialog(this, "Login failed. Check your email and password.",
+                    "Login", JOptionPane.ERROR_MESSAGE);
             return;
         }
         currentAccount = account;
@@ -123,6 +182,38 @@ public class SchedulerFrame extends JFrame {
         updateActionVisibility();
         refreshRooms();
         cardLayout.show(cards, "dashboard");
+    }
+
+    private void register() {
+        String email = registerEmailField.getText();
+        String password = new String(registerPasswordField.getPassword());
+        String confirmPassword = new String(confirmPasswordField.getPassword());
+        String accountType = (String) accountTypeCombo.getSelectedItem();
+        boolean universityAccount = universityAccountCheckBox.isSelected();
+
+        if (!password.equals(confirmPassword)) {
+            JOptionPane.showMessageDialog(this, "Passwords do not match.",
+                    "Register", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String error = service.registerAccount(email, password, accountType, universityAccount);
+        if (error != null) {
+            JOptionPane.showMessageDialog(this, error, "Register", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String successMessage = "Account created successfully. You can now log in.";
+        if (universityAccount) {
+            successMessage = "Account created. Verification required before full access.";
+        }
+        JOptionPane.showMessageDialog(this, successMessage, "Register", JOptionPane.INFORMATION_MESSAGE);
+
+        registerEmailField.setText("");
+        registerPasswordField.setText("");
+        confirmPasswordField.setText("");
+        universityAccountCheckBox.setSelected(false);
+        accountTypeCombo.setSelectedIndex(0);
     }
 
     private void signOut() {
@@ -140,6 +231,7 @@ public class SchedulerFrame extends JFrame {
         reserveButton.setVisible(loggedIn);
         addRoomButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
         maintenanceButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
+        generateAdminButton.setVisible(loggedIn && "coordinator".equalsIgnoreCase(currentAccount.getAccountType()));
         checkInButton.setVisible(loggedIn);
         refreshButton.setVisible(loggedIn);
         signOutButton.setVisible(loggedIn);
@@ -214,6 +306,28 @@ public class SchedulerFrame extends JFrame {
         service.closeRoomForMaintenance(selected.getRoomId());
         outputArea.append("\nClosed room for maintenance: " + selected.getName());
         refreshRooms();
+    }
+    
+    private void generateAdminAccount() {
+        if (currentAccount == null || !"coordinator".equalsIgnoreCase(currentAccount.getAccountType())) {
+            outputArea.setText("Only the chief event coordinator can generate admin accounts.");
+            return;
+        }
+        JTextField newEmailField = new JTextField();
+        JPasswordField newPasswordField = new JPasswordField();
+        Object[] fields = {"New admin email:", newEmailField, "New admin password:", newPasswordField};
+        int result = JOptionPane.showConfirmDialog(this, fields, "Generate Admin Account", JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+        String newEmail = newEmailField.getText().trim();
+        String newPassword = new String(newPasswordField.getPassword());
+        if (newEmail.isEmpty() || newPassword.isEmpty()) {
+            outputArea.append("\nAdmin generation cancelled: email and password are required.");
+            return;
+        }
+        Account admin = service.createAdminAccount(newEmail, newPassword);
+        outputArea.append("\nGenerated admin account: " + admin.getEmail() + " (" + admin.getAccountId() + ")");
     }
 
     private void checkIn() {

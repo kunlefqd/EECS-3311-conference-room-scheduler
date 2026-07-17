@@ -7,7 +7,7 @@ import com.conferenceroomscheduler.model.OccupancySensor;
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
-import com.conferenceroomscheduler.model.User;
+import com.conferenceroomscheduler.patterns.AccountFactory;
 import com.conferenceroomscheduler.patterns.BookingContext;
 import com.conferenceroomscheduler.patterns.CreditCardPaymentStrategy;
 import com.conferenceroomscheduler.patterns.ChiefEventCoordinator;
@@ -15,11 +15,14 @@ import com.conferenceroomscheduler.patterns.Command;
 import com.conferenceroomscheduler.patterns.ConfirmedBookingState;
 import com.conferenceroomscheduler.patterns.CreateBookingCommand;
 import com.conferenceroomscheduler.patterns.DebitCardPaymentStrategy;
+import com.conferenceroomscheduler.patterns.FacultyFactory;
 import com.conferenceroomscheduler.patterns.InstitutionalBillingPaymentStrategy;
+import com.conferenceroomscheduler.patterns.PartnerFactory;
 import com.conferenceroomscheduler.patterns.PaymentStrategy;
 import com.conferenceroomscheduler.patterns.RoomFactory;
 import com.conferenceroomscheduler.patterns.RoomSensor;
-import com.conferenceroomscheduler.patterns.UserFactory;
+import com.conferenceroomscheduler.patterns.StaffFactory;
+import com.conferenceroomscheduler.patterns.StudentFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,12 +32,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class RoomSchedulerService {
     private final List<Room> rooms = new ArrayList<>();
     private final List<Reservation> reservations = new ArrayList<>();
-    private final List<User> users = new ArrayList<>();
     private final List<Account> accounts = new ArrayList<>();
     private final RoomFactory roomFactory = new RoomFactory();
     private final ChiefEventCoordinator coordinator = ChiefEventCoordinator.getInstance();
@@ -152,7 +155,8 @@ public class RoomSchedulerService {
 
     public Account createAccount(String email, String password, String accountType,
                                  boolean universityAccount, String identifier) {
-        Account account = new Account(
+        AccountFactory factory = createAccountFactory(accountType);
+        Account account = factory.createAccount(
                 "ACC" + (accounts.size() + 1),
                 email,
                 password,
@@ -166,11 +170,67 @@ public class RoomSchedulerService {
         return account;
     }
 
-    public User createUser(String userId, String name, String email, String password,
-                           String role, boolean universityAccount, String identifier) {
-        User user = new User(userId, name, email, password, role, universityAccount, !universityAccount, identifier);
-        users.add(user);
-        return user;
+    /**
+     * Req1 registration. Returns null on success, otherwise a user-facing error message.
+     */
+    public String registerAccount(String email, String password, String accountType,
+                                  boolean universityAccount) {
+        if (email == null || !isValidEmail(email)) {
+            return "Invalid email address.";
+        }
+        if (isDuplicateEmail(email)) {
+            return "An account with this email already exists.";
+        }
+        if (!isStrongPassword(password)) {
+            return "Weak password. Use at least 8 characters with uppercase, lowercase, numbers, and symbols.";
+        }
+        if (!isSupportedAccountType(accountType)) {
+            return "Unsupported account type. Choose student, faculty, staff, or partner.";
+        }
+
+        String identifier = "ID" + (accounts.size() + 1);
+        createAccount(email.trim(), password, accountType.toLowerCase(), universityAccount, identifier);
+        return null;
+    }
+
+    public AccountFactory createAccountFactory(String accountType) {
+        if (accountType == null) {
+            throw new IllegalArgumentException("Unsupported account type.");
+        }
+        return switch (accountType.toLowerCase()) {
+            case "student" -> new StudentFactory();
+            case "faculty" -> new FacultyFactory();
+            case "staff" -> new StaffFactory();
+            case "partner" -> new PartnerFactory();
+            default -> throw new IllegalArgumentException("Unsupported account type.");
+        };
+    }
+
+    private boolean isValidEmail(String email) {
+        return Pattern.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", email.trim());
+    }
+
+    private boolean isStrongPassword(String password) {
+        return password != null
+                && password.length() >= 8
+                && Pattern.compile("[A-Z]").matcher(password).find()
+                && Pattern.compile("[a-z]").matcher(password).find()
+                && Pattern.compile("\\d").matcher(password).find()
+                && Pattern.compile("[^A-Za-z0-9]").matcher(password).find();
+    }
+
+    private boolean isDuplicateEmail(String email) {
+        return accounts.stream().anyMatch(account -> account.getEmail().equalsIgnoreCase(email.trim()));
+    }
+
+    private boolean isSupportedAccountType(String accountType) {
+        if (accountType == null) {
+            return false;
+        }
+        return switch (accountType.toLowerCase()) {
+            case "student", "faculty", "staff", "partner" -> true;
+            default -> false;
+        };
     }
 
     public Room createRoom(String roomId, String name, int capacity, String building, String roomNumber) {
@@ -248,11 +308,16 @@ public class RoomSchedulerService {
         return strategy.processPayment(bookingId, amount);
     }
 
-    public UserFactory createUserFactory(String role) {
-        if ("ADMIN".equalsIgnoreCase(role)) {
-            return new com.conferenceroomscheduler.patterns.AdminFactory();
-        }
-        return new com.conferenceroomscheduler.patterns.AttendeeFactory();
+
+    /**
+     * Req2: admin accounts can only be minted through the Singleton chief event
+     * coordinator, which builds the account via the AdminFactory (Factory Method).
+     */
+    public Account createAdminAccount(String email, String password) {
+        Account admin = coordinator.generateAdminAccount("ACC" + (accounts.size() + 1), email, password);
+        accounts.add(admin);
+        saveData();
+        return admin;
     }
 
     public double calculateHourlyRate(String role) {
