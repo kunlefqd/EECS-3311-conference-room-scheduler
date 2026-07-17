@@ -1,7 +1,9 @@
 package com.conferenceroomscheduler.service;
 
 import com.conferenceroomscheduler.model.Account;
+import com.conferenceroomscheduler.model.Badge;
 import com.conferenceroomscheduler.model.BookingRequest;
+import com.conferenceroomscheduler.model.OccupancySensor;
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
@@ -44,7 +46,7 @@ public class RoomSchedulerService {
     private Account loggedInAccount;
 
     public RoomSchedulerService() {
-        coordinator.registerObserver(new RoomSensor());
+        coordinator.registerObserver(new RoomSensor()); // TODO: call the correct sensor
         loadData();
     }
 
@@ -294,5 +296,23 @@ public class RoomSchedulerService {
 
     public Account getLoggedInAccount() {
         return loggedInAccount;
+    }
+    
+    public void checkIn(String roomId) {
+        Room checkedInRoom = getRoomById(roomId);
+        Badge badge = loggedInAccount.getBadge();
+        if (checkedInRoom != null) {
+            OccupancySensor sensor = checkedInRoom.getOccupancySensor();
+            sensor.scanIdBadge(badge);
+        }
+    }
+
+    private Room getRoomById(String roomId) {
+        for (Room room : rooms) {
+            if (room.getRoomId().equals(roomId)) {
+                return room;
+            }
+        }
+        return null;
     }
 }

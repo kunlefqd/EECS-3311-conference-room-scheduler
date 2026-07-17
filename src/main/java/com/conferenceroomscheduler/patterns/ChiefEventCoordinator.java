@@ -14,6 +14,7 @@ public class ChiefEventCoordinator {
         return INSTANCE;
     }
 
+    // TODO: change impl to deal more closely with OccupancySensor. how do we get the room info?
     public void registerObserver(RoomSensorObserver observer) {
         observers.add(observer);
     }

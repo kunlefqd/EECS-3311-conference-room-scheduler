@@ -22,6 +22,7 @@ public class SchedulerFrame extends JFrame {
     private final JButton addRoomButton = new JButton("Add Room");
     private final JButton reserveButton = new JButton("Create Booking");
     private final JButton maintenanceButton = new JButton("Close for Maintenance");
+    private final JButton checkInButton = new JButton("Check In");
     private final JButton refreshButton = new JButton("Refresh");
     private final JButton signOutButton = new JButton("Sign Out");
     private final CardLayout cardLayout = new CardLayout();
@@ -67,10 +68,11 @@ public class SchedulerFrame extends JFrame {
         topBar.add(welcomeLabel, BorderLayout.WEST);
         topBar.add(signOutButton, BorderLayout.EAST);
 
-        JPanel actionPanel = new JPanel(new GridLayout(1, 4, 5, 5));
+        JPanel actionPanel = new JPanel(new GridLayout(1, 5, 5, 5));
         actionPanel.add(reserveButton);
         actionPanel.add(addRoomButton);
         actionPanel.add(maintenanceButton);
+        actionPanel.add(checkInButton);
         actionPanel.add(refreshButton);
 
         JPanel leftPanel = new JPanel(new BorderLayout(5, 5));
@@ -92,6 +94,7 @@ public class SchedulerFrame extends JFrame {
         addRoomButton.addActionListener(e -> addSampleRoom());
         reserveButton.addActionListener(e -> createSampleReservation());
         maintenanceButton.addActionListener(e -> closeRoomForMaintenance());
+        checkInButton.addActionListener(e -> checkIn());
         refreshButton.addActionListener(e -> refreshRooms());
         signOutButton.addActionListener(e -> signOut());
 
@@ -137,6 +140,7 @@ public class SchedulerFrame extends JFrame {
         reserveButton.setVisible(loggedIn);
         addRoomButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
         maintenanceButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
+        checkInButton.setVisible(loggedIn);
         refreshButton.setVisible(loggedIn);
         signOutButton.setVisible(loggedIn);
         welcomeLabel.setVisible(loggedIn);
@@ -210,6 +214,28 @@ public class SchedulerFrame extends JFrame {
         service.closeRoomForMaintenance(selected.getRoomId());
         outputArea.append("\nClosed room for maintenance: " + selected.getName());
         refreshRooms();
+    }
+
+    private void checkIn() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return;
+        }
+        List<Room> rooms = service.getAllRooms();
+        if (rooms.isEmpty()) {
+            outputArea.append("\nNo rooms available to check in to.");
+            return;
+        }
+
+        int selectedIndex = roomList.getSelectedIndex();
+        if (selectedIndex < 0) {
+            outputArea.append("\nPlease select a room first.");
+            return;
+        }
+
+        Room selected = rooms.get(selectedIndex);
+        service.checkIn(selected.getRoomId());
+        outputArea.append("\nChecked in to: " + selected.getName());
     }
 
     private void refreshRooms() {

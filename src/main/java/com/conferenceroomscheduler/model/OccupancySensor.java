@@ -46,13 +46,13 @@ public class OccupancySensor implements RoomSensorObserver {
      * Req5: each room has sensors to detect occupancy and scan ID badges for verification.
      * Data is sent to the system.
      */
-    boolean scanIdBadge(Badge badge) {
-        if (badge.isVerified()) {
-            sendData(badge);
-        }
+    // Scan ID Badges
+    public boolean scanIdBadge(Badge badge) {
+        sendData(badge);
         return badge.isVerified();
     }
 
+    // Send Data to System
     void sendData(Badge badge) {
         String row = String.join(",", this.roomId, badge.getEmail(), badge.getAccountId(), Boolean.toString(badge.isVerified()));
         try {
@@ -65,11 +65,8 @@ public class OccupancySensor implements RoomSensorObserver {
         }
     }
 
-    // when someone checks in, we can detect occupancy
-    // this can be the listener update method
     @Override
     public void update(String message) {
-
         System.out.println("Sensor received: " + message);
     }
 
