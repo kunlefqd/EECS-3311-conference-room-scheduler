@@ -256,7 +256,13 @@ public class SchedulerFrame extends JFrame {
             return;
         }
 
-        Room selected = rooms.get(0);
+        int selectedIndex = roomList.getSelectedIndex();
+        if (selectedIndex < 0) {
+            outputArea.append("\nPlease select a room first.");
+            return;
+        }
+
+        Room selected = rooms.get(selectedIndex);
         Reservation reservation = new Reservation(
                 "RES" + System.currentTimeMillis(),
                 selected.getRoomId(),
@@ -285,8 +291,16 @@ public class SchedulerFrame extends JFrame {
             outputArea.append("\nNo rooms to close.");
             return;
         }
-        service.closeRoomForMaintenance(rooms.get(0).getRoomId());
-        outputArea.append("\nClosed room for maintenance: " + rooms.get(0).getName());
+
+        int selectedIndex = roomList.getSelectedIndex();
+        if (selectedIndex < 0) {
+            outputArea.append("\nPlease select a room first.");
+            return;
+        }
+
+        Room selected = rooms.get(selectedIndex);
+        service.closeRoomForMaintenance(selected.getRoomId());
+        outputArea.append("\nClosed room for maintenance: " + selected.getName());
         refreshRooms();
     }
     

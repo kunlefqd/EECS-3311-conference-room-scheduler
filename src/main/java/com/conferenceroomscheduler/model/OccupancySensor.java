@@ -1,6 +1,8 @@
 package com.conferenceroomscheduler.model;
 
-public class OccupancySensor {
+import com.conferenceroomscheduler.patterns.RoomSensorObserver;
+
+public class OccupancySensor implements RoomSensorObserver {
     private String roomId;
     private boolean occupied;
 
@@ -26,5 +28,17 @@ public class OccupancySensor {
 
     public void setOccupied(boolean occupied) {
         this.occupied = occupied;
+    }
+
+    // when someone checks in, we can detect occupancy
+    // this can be the listener update method
+    @Override
+    public void update(String message) {
+        System.out.println("Sensor received: " + message);
+    }
+
+    // write checking methods, make a new user with a valid badge one with an invalid badge
+    boolean scanIdBadge(Account account) {
+        return account.isVerified();
     }
 }
