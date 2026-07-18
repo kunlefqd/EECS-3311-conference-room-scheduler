@@ -106,7 +106,9 @@ public class SchedulerFrame extends JFrame {
         JPanel rightPanel = new JPanel(new BorderLayout(5, 5));
         rightPanel.add(new JLabel("Event Services Actions"), BorderLayout.NORTH);
         rightPanel.add(bookingsPanel, BorderLayout.CENTER);
-        rightPanel.add(outputArea, BorderLayout.SOUTH);
+        JScrollPane outputScrollPane = new JScrollPane(outputArea);
+        outputScrollPane.setPreferredSize(new Dimension(0, 160));
+        rightPanel.add(outputScrollPane, BorderLayout.SOUTH);
 
         dashboardPanel.add(topBar, BorderLayout.NORTH);
         dashboardPanel.add(actionPanel, BorderLayout.SOUTH);

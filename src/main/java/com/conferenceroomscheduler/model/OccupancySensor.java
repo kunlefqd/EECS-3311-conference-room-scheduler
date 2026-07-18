@@ -42,8 +42,8 @@ public class OccupancySensor extends CheckInObserver {
         sendData(badge);
         boolean verified = badge.isVerified();
         String badgeLine = verified
-                ? "Verified Badge detected for " + badge.getEmail() + "."
-                : "Unverified Badge detected for " + badge.getEmail() + ".";
+                ? "Verified badge detected for " + badge.getEmail() + "."
+                : "Unverified badge detected for " + badge.getEmail() + ".";
         lastEvent = (lastEvent != null ? lastEvent + "\n" : "") + badgeLine;
         return verified;
     }
