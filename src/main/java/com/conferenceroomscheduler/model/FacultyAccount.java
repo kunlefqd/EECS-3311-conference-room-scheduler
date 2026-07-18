@@ -6,7 +6,7 @@ public class FacultyAccount extends Account {
     }
 
     public FacultyAccount(String accountId, String email, String password,
-                          boolean universityAccount, boolean verified, String identifier) {
-        super(accountId, email, password, "faculty", universityAccount, verified, identifier);
+                          boolean universityAccount, boolean verified, String accountNumber) {
+        super(accountId, email, password, "faculty", universityAccount, verified, accountNumber);
     }
 }

@@ -1,10 +1,15 @@
 package com.conferenceroomscheduler.ui;
 
 import com.conferenceroomscheduler.model.Account;
+
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
 import com.conferenceroomscheduler.service.RoomSchedulerService;
+import com.conferenceroomscheduler.patterns.CancelBookingCommand;
+import com.conferenceroomscheduler.patterns.EditBookingCommand;
+import com.conferenceroomscheduler.patterns.ExtendBookingCommand;
+
 
 import javax.swing.*;
 import java.awt.*;
@@ -26,6 +31,8 @@ public class SchedulerFrame extends JFrame {
             "student", "faculty", "staff", "partner"
     });
     private final JCheckBox universityAccountCheckBox = new JCheckBox("University account (requires verification)");
+    private final JLabel universityAccountNumberLabel = new JLabel("University Account Number");
+    private final JTextField universityAccountNumberField = new JTextField();
     private final JButton registerButton = new JButton("Register");
     private final JButton addRoomButton = new JButton("Add Room");
     private final JButton reserveButton = new JButton("Create Booking");
@@ -35,6 +42,12 @@ public class SchedulerFrame extends JFrame {
     private final JButton checkInButton = new JButton("Check In");
     private final JButton refreshButton = new JButton("Refresh");
     private final JButton signOutButton = new JButton("Sign Out");
+    private final DefaultListModel<String> reservationListModel = new DefaultListModel<>();
+    private final JList<String> reservationList = new JList<>(reservationListModel);
+    private final JButton cancelBookingButton = new JButton("Cancel Booking");
+    private final JButton editBookingButton = new JButton("Edit Booking");
+    private final JButton extendBookingButton = new JButton("Extend Booking");
+    
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cards = new JPanel(cardLayout);
     private final JLabel welcomeLabel = new JLabel("Please sign in to continue");
@@ -80,9 +93,20 @@ public class SchedulerFrame extends JFrame {
         leftPanel.add(new JLabel("Available Rooms"), BorderLayout.NORTH);
         leftPanel.add(new JScrollPane(roomList), BorderLayout.CENTER);
 
+        JPanel bookingsPanel = new JPanel(new BorderLayout(5, 5));
+        bookingsPanel.add(new JLabel("My Bookings"), BorderLayout.NORTH);
+        bookingsPanel.add(new JScrollPane(reservationList), BorderLayout.CENTER);
+        JPanel bookingActionsPanel = new JPanel(new GridLayout(1, 3, 5, 5));
+        bookingActionsPanel.add(cancelBookingButton);
+        bookingActionsPanel.add(editBookingButton);
+        bookingActionsPanel.add(extendBookingButton);
+        bookingsPanel.add(bookingActionsPanel, BorderLayout.SOUTH);
+        bookingsPanel.setPreferredSize(new Dimension(0, 160));
+
         JPanel rightPanel = new JPanel(new BorderLayout(5, 5));
         rightPanel.add(new JLabel("Event Services Actions"), BorderLayout.NORTH);
-        rightPanel.add(outputArea, BorderLayout.CENTER);
+        rightPanel.add(bookingsPanel, BorderLayout.CENTER);
+        rightPanel.add(outputArea, BorderLayout.SOUTH);
 
         dashboardPanel.add(topBar, BorderLayout.NORTH);
         dashboardPanel.add(actionPanel, BorderLayout.SOUTH);
@@ -99,6 +123,9 @@ public class SchedulerFrame extends JFrame {
         checkInButton.addActionListener(e -> checkIn());
         refreshButton.addActionListener(e -> refreshRooms());
         signOutButton.addActionListener(e -> signOut());
+        cancelBookingButton.addActionListener(e -> cancelSelectedBooking());
+        editBookingButton.addActionListener(e -> editSelectedBooking());
+        extendBookingButton.addActionListener(e -> extendSelectedBooking());
 
         outputArea.setEditable(false);
         outputArea.setLineWrap(true);
@@ -141,7 +168,7 @@ public class SchedulerFrame extends JFrame {
         JPanel registerPanel = new JPanel(new BorderLayout(10, 10));
         registerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JPanel registerForm = new JPanel(new GridLayout(6, 2, 8, 8));
+        JPanel registerForm = new JPanel(new GridLayout(7, 2, 8, 8));
         registerForm.add(new JLabel("Email"));
         registerForm.add(registerEmailField);
         registerForm.add(new JLabel("Password"));
@@ -152,8 +179,13 @@ public class SchedulerFrame extends JFrame {
         registerForm.add(accountTypeCombo);
         registerForm.add(new JLabel(""));
         registerForm.add(universityAccountCheckBox);
+        registerForm.add(universityAccountNumberLabel);
+        registerForm.add(universityAccountNumberField);
         registerForm.add(new JLabel(""));
         registerForm.add(registerButton);
+
+        universityAccountCheckBox.addActionListener(e -> updateUniversityAccountNumberVisibility());
+        updateUniversityAccountNumberVisibility();
 
         JTextArea registerInfo = new JTextArea(
                 "Create an account with a unique valid email and a strong password "
@@ -169,6 +201,17 @@ public class SchedulerFrame extends JFrame {
         return registerPanel;
     }
 
+    private void updateUniversityAccountNumberVisibility() {
+        boolean show = universityAccountCheckBox.isSelected();
+        universityAccountNumberLabel.setVisible(show);
+        universityAccountNumberField.setVisible(show);
+        if (!show) {
+            universityAccountNumberField.setText("");
+        }
+        universityAccountNumberLabel.getParent().revalidate();
+        universityAccountNumberLabel.getParent().repaint();
+    }
+
     private void login() {
         String email = emailField.getText();
         String password = new String(passwordField.getPassword());
@@ -178,6 +221,10 @@ public class SchedulerFrame extends JFrame {
                     "Login", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        openDashboard(account);
+    }
+
+    private void openDashboard(Account account) {
         currentAccount = account;
         welcomeLabel.setText("Signed in as " + account.getEmail() + " (" + account.getAccountType() + ")");
         outputArea.setText("Welcome to the room booking system.");
@@ -192,6 +239,7 @@ public class SchedulerFrame extends JFrame {
         String confirmPassword = new String(confirmPasswordField.getPassword());
         String accountType = (String) accountTypeCombo.getSelectedItem();
         boolean universityAccount = universityAccountCheckBox.isSelected();
+        String universityAccountNumber = universityAccountNumberField.getText().trim();
 
         if (!password.equals(confirmPassword)) {
             JOptionPane.showMessageDialog(this, "Passwords do not match.",
@@ -199,23 +247,32 @@ public class SchedulerFrame extends JFrame {
             return;
         }
 
-        String error = service.registerAccount(email, password, accountType, universityAccount);
+        String error = service.registerAccount(
+                email, password, accountType, universityAccount, universityAccountNumber);
         if (error != null) {
             JOptionPane.showMessageDialog(this, error, "Register", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        String successMessage = "Account created successfully. You can now log in.";
-        if (universityAccount) {
-            successMessage = "Account created. Verification required before full access.";
-        }
-        JOptionPane.showMessageDialog(this, successMessage, "Register", JOptionPane.INFORMATION_MESSAGE);
-
         registerEmailField.setText("");
         registerPasswordField.setText("");
         confirmPasswordField.setText("");
+        universityAccountNumberField.setText("");
         universityAccountCheckBox.setSelected(false);
         accountTypeCombo.setSelectedIndex(0);
+        updateUniversityAccountNumberVisibility();
+
+        if (universityAccount) {
+            Account account = service.authenticate(email, password);
+            if (account != null) {
+                openDashboard(account);
+                return;
+            }
+        }
+
+        JOptionPane.showMessageDialog(this,
+                "Account created successfully. You can now log in.",
+                "Register", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void signOut() {
@@ -238,6 +295,9 @@ public class SchedulerFrame extends JFrame {
         refreshButton.setVisible(loggedIn);
         signOutButton.setVisible(loggedIn);
         welcomeLabel.setVisible(loggedIn);
+        cancelBookingButton.setVisible(loggedIn);
+        editBookingButton.setVisible(loggedIn);
+        extendBookingButton.setVisible(loggedIn);
     }
 
     private void addSampleRoom() {
@@ -370,5 +430,100 @@ public class SchedulerFrame extends JFrame {
             String maintenance = room.isClosedForMaintenance() ? " | Maintenance" : "";
             roomListModel.addElement(room.getName() + " (" + room.getRoomId() + ") - " + status + maintenance);
         }
+        refreshReservations();
+    }
+
+    private void refreshReservations() {
+        reservationListModel.clear();
+        if (currentAccount == null) {
+            return;
+        }
+        for (Reservation reservation : service.getReservationsForAccount(currentAccount.getAccountId())) {
+            String status = reservation.isCanceled() ? "Cancelled"
+                    : reservation.isCheckedIn() ? "Checked In"
+                    : "Confirmed";
+            reservationListModel.addElement(reservation.getReservationId() + " | " + reservation.getRoomId()
+                    + " | " + reservation.getStartTime() + " - " + reservation.getEndTime() + " | " + status);
+        }
+    }
+
+    private Reservation getSelectedReservation() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return null;
+        }
+        int index = reservationList.getSelectedIndex();
+        List<Reservation> myReservations = service.getReservationsForAccount(currentAccount.getAccountId());
+        if (index < 0 || index >= myReservations.size()) {
+            outputArea.append("\nPlease select a booking first.");
+            return null;
+        }
+        return myReservations.get(index);
+    }
+
+    private void cancelSelectedBooking() {
+        Reservation reservation = getSelectedReservation();
+        if (reservation == null) {
+            return;
+        }
+        CancelBookingCommand command = new CancelBookingCommand(service, reservation);
+        command.execute();
+        outputArea.append("\n" + (command.wasSuccessful()
+                ? "Cancelled booking: " + reservation.getReservationId()
+                : "Could not cancel booking " + reservation.getReservationId() + " (already cancelled or past start time)."));
+        refreshReservations();
+    }
+
+    private void editSelectedBooking() {
+        Reservation reservation = getSelectedReservation();
+        if (reservation == null) {
+            return;
+        }
+        String minutesInput = JOptionPane.showInputDialog(this,
+                "Shift booking by how many minutes? (e.g. 30, or -30 to move earlier)");
+        if (minutesInput == null || minutesInput.isBlank()) {
+            return;
+        }
+        long minutes;
+        try {
+            minutes = Long.parseLong(minutesInput.trim());
+        } catch (NumberFormatException ex) {
+            outputArea.append("\nInvalid number entered.");
+            return;
+        }
+        LocalDateTime newStart = reservation.getStartTime().plusMinutes(minutes);
+        LocalDateTime newEnd = reservation.getEndTime().plusMinutes(minutes);
+        
+        EditBookingCommand command = new EditBookingCommand(service, reservation, newStart, newEnd);
+        command.execute();
+        outputArea.append("\n" + (command.wasSuccessful()
+                ? "Edited booking: " + reservation.getReservationId()
+                : "Could not edit booking " + reservation.getReservationId() + " (past start time, cancelled, or room unavailable)."));
+        refreshReservations();
+    }
+
+    private void extendSelectedBooking() {
+        Reservation reservation = getSelectedReservation();
+        if (reservation == null) {
+            return;
+        }
+        String minutesInput = JOptionPane.showInputDialog(this, "Extend booking by how many minutes?");
+        if (minutesInput == null || minutesInput.isBlank()) {
+            return;
+        }
+        long minutes;
+        try {
+            minutes = Long.parseLong(minutesInput.trim());
+        } catch (NumberFormatException ex) {
+            outputArea.append("\nInvalid number entered.");
+            return;
+        }
+        LocalDateTime newEnd = reservation.getEndTime().plusMinutes(minutes);
+        ExtendBookingCommand command = new ExtendBookingCommand(service, reservation, newEnd);
+        command.execute();
+        outputArea.append("\n" + (command.wasSuccessful()
+                ? "Extended booking: " + reservation.getReservationId()
+                : "Could not extend booking " + reservation.getReservationId() + " (cancelled, or room unavailable, or not a later time)."));
+        refreshReservations();
     }
 }

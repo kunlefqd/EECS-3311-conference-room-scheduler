@@ -25,8 +25,8 @@ public class ChiefEventCoordinator {
      */
     public Account generateAdminAccount(String accountId, String email, String password) {
         adminSequence++;
-        String identifier = "ADMIN-" + adminSequence;
-        Account admin = adminFactory.createAccount(accountId, email, password, "admin", false, true, identifier);
+        String accountNumber = "ADMIN-" + adminSequence;
+        Account admin = adminFactory.createAccount(accountId, email, password, "admin", false, true, accountNumber);
         notifyObservers("Administrator account generated: " + email);
         return admin;
     }

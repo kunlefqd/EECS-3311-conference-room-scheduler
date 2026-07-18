@@ -117,9 +117,9 @@ public class RoomSchedulerService {
     private void saveAccounts() {
         try {
             List<String> lines = new ArrayList<>();
-            lines.add("accountId,email,password,accountType,universityAccount,verified,identifier");
+            lines.add("accountId,email,password,accountType,universityAccount,verified,accountNumber");
             for (Account account : accounts) {
-                lines.add(String.join(",", account.getAccountId(), account.getEmail(), account.getPassword(), account.getAccountType(), Boolean.toString(account.isUniversityAccount()), Boolean.toString(account.isVerified()), account.getIdentifier()));
+                lines.add(String.join(",", account.getAccountId(), account.getEmail(), account.getPassword(), account.getAccountType(), Boolean.toString(account.isUniversityAccount()), Boolean.toString(account.isVerified()), account.getAccountNumber()));
             }
             Files.write(reservationsFile.getParent().resolve("accounts.csv"), lines);
         } catch (IOException e) {
@@ -154,16 +154,18 @@ public class RoomSchedulerService {
     }
 
     public Account createAccount(String email, String password, String accountType,
-                                 boolean universityAccount, String identifier) {
+                                 boolean universityAccount, String accountNumber) {
         AccountFactory factory = createAccountFactory(accountType);
+        boolean verified = !universityAccount
+                || (accountNumber != null && accountNumber.matches("\\d{9}"));
         Account account = factory.createAccount(
                 "ACC" + (accounts.size() + 1),
                 email,
                 password,
                 accountType,
                 universityAccount,
-                !universityAccount,
-                identifier
+                verified,
+                accountNumber
         );
         accounts.add(account);
         saveData();
@@ -174,7 +176,7 @@ public class RoomSchedulerService {
      * Req1 registration. Returns null on success, otherwise a user-facing error message.
      */
     public String registerAccount(String email, String password, String accountType,
-                                  boolean universityAccount) {
+                                  boolean universityAccount, String universityAccountNumber) {
         if (email == null || !isValidEmail(email)) {
             return "Invalid email address.";
         }
@@ -188,8 +190,16 @@ public class RoomSchedulerService {
             return "Unsupported account type. Choose student, faculty, staff, or partner.";
         }
 
-        String identifier = "ID" + (accounts.size() + 1);
-        createAccount(email.trim(), password, accountType.toLowerCase(), universityAccount, identifier);
+        String accountNumber;
+        if (universityAccount) {
+            if (universityAccountNumber == null || !universityAccountNumber.matches("\\d{9}")) {
+                return "University accounts must provide a valid 9-digit university account number.";
+            }
+            accountNumber = universityAccountNumber;
+        } else {
+            accountNumber = "ID" + (accounts.size() + 1);
+        }
+        createAccount(email.trim(), password, accountType.toLowerCase(), universityAccount, accountNumber);
         return null;
     }
 
@@ -283,10 +293,25 @@ public class RoomSchedulerService {
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
                 .collect(Collectors.toList());
     }
+    
+    public List<Reservation> getReservationsForAccount(String accountId) {
+        return reservations.stream()
+                .filter(reservation -> reservation.getUserId().equals(accountId))
+                .collect(Collectors.toList());
+    }
 
     public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end) {
         return reservations.stream()
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
+                .noneMatch(reservation ->
+                        (start.isBefore(reservation.getEndTime()) && end.isAfter(reservation.getStartTime()))
+                );
+    }
+    
+    public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end, String excludeReservationId) {
+        return reservations.stream()
+                .filter(reservation -> reservation.getRoomId().equals(roomId))
+                .filter(reservation -> !reservation.getReservationId().equals(excludeReservationId))
                 .noneMatch(reservation ->
                         (start.isBefore(reservation.getEndTime()) && end.isAfter(reservation.getStartTime()))
                 );
@@ -367,15 +392,49 @@ public class RoomSchedulerService {
         }
     }
 
-    public void extendBooking(Reservation reservation, LocalDateTime newEndTime) {
-        if (isRoomAvailable(reservation.getRoomId(), reservation.getEndTime(), newEndTime)) {
-            reservation.setEndTime(newEndTime);
-            reservation.setExtended(true);
+    public boolean extendBooking(Reservation reservation, LocalDateTime newEndTime) {
+        if (reservation.isCanceled()) {
+            return false;
         }
+        if (!newEndTime.isAfter(reservation.getEndTime())) {
+            return false;
+        }
+        if (!isRoomAvailable(reservation.getRoomId(), reservation.getEndTime(), newEndTime)) {
+            return false;
+        }
+        
+        reservation.setEndTime(newEndTime);
+        reservation.setExtended(true);
+        saveData();
+        return true;
     }
 
-    public void cancelBooking(Reservation reservation) {
+    public boolean cancelBooking(Reservation reservation) {
+        if (reservation.isCanceled()) {
+            return false;
+        }
+        if (LocalDateTime.now().isAfter(reservation.getStartTime())) {
+            return false;
+        }
         reservation.setCanceled(true);
+        saveData();
+        return true;
+    }
+
+    public boolean editBooking(Reservation reservation, LocalDateTime newStart, LocalDateTime newEnd) {
+        if (reservation.isCanceled()) {
+            return false;
+        }
+        if (LocalDateTime.now().isAfter(reservation.getStartTime())) {
+            return false;
+        }
+        if (!isRoomAvailable(reservation.getRoomId(), newStart, newEnd, reservation.getReservationId())) {
+            return false;
+        }
+        reservation.setStartTime(newStart);
+        reservation.setEndTime(newEnd);
+        saveData();
+        return true;
     }
 
     public Account authenticate(String email, String password) {
