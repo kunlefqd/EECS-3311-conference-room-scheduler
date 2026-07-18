@@ -45,7 +45,7 @@ public class OccupancySensor extends CheckInObserver {
                 ? "Verified Badge detected for " + badge.getEmail() + "."
                 : "Unverified Badge detected for " + badge.getEmail() + ".";
         lastEvent = (lastEvent != null ? lastEvent + "\n" : "") + badgeLine;
-        return verified; // TODO: add unverified step
+        return verified;
     }
 
     // Send Data to System
