@@ -281,10 +281,25 @@ public class RoomSchedulerService {
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
                 .collect(Collectors.toList());
     }
+    
+    public List<Reservation> getReservationsForAccount(String accountId) {
+        return reservations.stream()
+                .filter(reservation -> reservation.getUserId().equals(accountId))
+                .collect(Collectors.toList());
+    }
 
     public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end) {
         return reservations.stream()
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
+                .noneMatch(reservation ->
+                        (start.isBefore(reservation.getEndTime()) && end.isAfter(reservation.getStartTime()))
+                );
+    }
+    
+    public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end, String excludeReservationId) {
+        return reservations.stream()
+                .filter(reservation -> reservation.getRoomId().equals(roomId))
+                .filter(reservation -> !reservation.getReservationId().equals(excludeReservationId))
                 .noneMatch(reservation ->
                         (start.isBefore(reservation.getEndTime()) && end.isAfter(reservation.getStartTime()))
                 );
@@ -365,15 +380,49 @@ public class RoomSchedulerService {
         }
     }
 
-    public void extendBooking(Reservation reservation, LocalDateTime newEndTime) {
-        if (isRoomAvailable(reservation.getRoomId(), reservation.getEndTime(), newEndTime)) {
-            reservation.setEndTime(newEndTime);
-            reservation.setExtended(true);
+    public boolean extendBooking(Reservation reservation, LocalDateTime newEndTime) {
+        if (reservation.isCanceled()) {
+            return false;
         }
+        if (!newEndTime.isAfter(reservation.getEndTime())) {
+            return false;
+        }
+        if (!isRoomAvailable(reservation.getRoomId(), reservation.getEndTime(), newEndTime)) {
+            return false;
+        }
+        
+        reservation.setEndTime(newEndTime);
+        reservation.setExtended(true);
+        saveData();
+        return true;
     }
 
-    public void cancelBooking(Reservation reservation) {
+    public boolean cancelBooking(Reservation reservation) {
+        if (reservation.isCanceled()) {
+            return false;
+        }
+        if (LocalDateTime.now().isAfter(reservation.getStartTime())) {
+            return false;
+        }
         reservation.setCanceled(true);
+        saveData();
+        return true;
+    }
+
+    public boolean editBooking(Reservation reservation, LocalDateTime newStart, LocalDateTime newEnd) {
+        if (reservation.isCanceled()) {
+            return false;
+        }
+        if (LocalDateTime.now().isAfter(reservation.getStartTime())) {
+            return false;
+        }
+        if (!isRoomAvailable(reservation.getRoomId(), newStart, newEnd, reservation.getReservationId())) {
+            return false;
+        }
+        reservation.setStartTime(newStart);
+        reservation.setEndTime(newEnd);
+        saveData();
+        return true;
     }
 
     public Account authenticate(String email, String password) {
