@@ -6,7 +6,7 @@ public class PartnerAccount extends Account {
     }
 
     public PartnerAccount(String accountId, String email, String password,
-                          boolean universityAccount, boolean verified, String identifier) {
-        super(accountId, email, password, "partner", universityAccount, verified, identifier);
+                          boolean universityAccount, boolean verified, String accountNumber) {
+        super(accountId, email, password, "partner", universityAccount, verified, accountNumber);
     }
 }

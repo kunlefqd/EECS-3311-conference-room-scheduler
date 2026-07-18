@@ -7,7 +7,7 @@ public class StaffFactory extends AccountFactory {
     @Override
     protected Account createConcreteAccount(String accountId, String email, String password,
                                             String accountType, boolean universityAccount,
-                                            boolean verified, String identifier) {
-        return new StaffAccount(accountId, email, password, universityAccount, verified, identifier);
+                                            boolean verified, String accountNumber) {
+        return new StaffAccount(accountId, email, password, universityAccount, verified, accountNumber);
     }
 }

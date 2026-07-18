@@ -31,6 +31,8 @@ public class SchedulerFrame extends JFrame {
             "student", "faculty", "staff", "partner"
     });
     private final JCheckBox universityAccountCheckBox = new JCheckBox("University account (requires verification)");
+    private final JLabel universityAccountNumberLabel = new JLabel("University Account Number");
+    private final JTextField universityAccountNumberField = new JTextField();
     private final JButton registerButton = new JButton("Register");
     private final JButton addRoomButton = new JButton("Add Room");
     private final JButton reserveButton = new JButton("Create Booking");
@@ -164,7 +166,7 @@ public class SchedulerFrame extends JFrame {
         JPanel registerPanel = new JPanel(new BorderLayout(10, 10));
         registerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JPanel registerForm = new JPanel(new GridLayout(6, 2, 8, 8));
+        JPanel registerForm = new JPanel(new GridLayout(7, 2, 8, 8));
         registerForm.add(new JLabel("Email"));
         registerForm.add(registerEmailField);
         registerForm.add(new JLabel("Password"));
@@ -175,8 +177,13 @@ public class SchedulerFrame extends JFrame {
         registerForm.add(accountTypeCombo);
         registerForm.add(new JLabel(""));
         registerForm.add(universityAccountCheckBox);
+        registerForm.add(universityAccountNumberLabel);
+        registerForm.add(universityAccountNumberField);
         registerForm.add(new JLabel(""));
         registerForm.add(registerButton);
+
+        universityAccountCheckBox.addActionListener(e -> updateUniversityAccountNumberVisibility());
+        updateUniversityAccountNumberVisibility();
 
         JTextArea registerInfo = new JTextArea(
                 "Create an account with a unique valid email and a strong password "
@@ -192,6 +199,17 @@ public class SchedulerFrame extends JFrame {
         return registerPanel;
     }
 
+    private void updateUniversityAccountNumberVisibility() {
+        boolean show = universityAccountCheckBox.isSelected();
+        universityAccountNumberLabel.setVisible(show);
+        universityAccountNumberField.setVisible(show);
+        if (!show) {
+            universityAccountNumberField.setText("");
+        }
+        universityAccountNumberLabel.getParent().revalidate();
+        universityAccountNumberLabel.getParent().repaint();
+    }
+
     private void login() {
         String email = emailField.getText();
         String password = new String(passwordField.getPassword());
@@ -201,6 +219,10 @@ public class SchedulerFrame extends JFrame {
                     "Login", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        openDashboard(account);
+    }
+
+    private void openDashboard(Account account) {
         currentAccount = account;
         welcomeLabel.setText("Signed in as " + account.getEmail() + " (" + account.getAccountType() + ")");
         outputArea.setText("Welcome to the room booking system.");
@@ -215,6 +237,7 @@ public class SchedulerFrame extends JFrame {
         String confirmPassword = new String(confirmPasswordField.getPassword());
         String accountType = (String) accountTypeCombo.getSelectedItem();
         boolean universityAccount = universityAccountCheckBox.isSelected();
+        String universityAccountNumber = universityAccountNumberField.getText().trim();
 
         if (!password.equals(confirmPassword)) {
             JOptionPane.showMessageDialog(this, "Passwords do not match.",
@@ -222,23 +245,32 @@ public class SchedulerFrame extends JFrame {
             return;
         }
 
-        String error = service.registerAccount(email, password, accountType, universityAccount);
+        String error = service.registerAccount(
+                email, password, accountType, universityAccount, universityAccountNumber);
         if (error != null) {
             JOptionPane.showMessageDialog(this, error, "Register", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        String successMessage = "Account created successfully. You can now log in.";
-        if (universityAccount) {
-            successMessage = "Account created. Verification required before full access.";
-        }
-        JOptionPane.showMessageDialog(this, successMessage, "Register", JOptionPane.INFORMATION_MESSAGE);
-
         registerEmailField.setText("");
         registerPasswordField.setText("");
         confirmPasswordField.setText("");
+        universityAccountNumberField.setText("");
         universityAccountCheckBox.setSelected(false);
         accountTypeCombo.setSelectedIndex(0);
+        updateUniversityAccountNumberVisibility();
+
+        if (universityAccount) {
+            Account account = service.authenticate(email, password);
+            if (account != null) {
+                openDashboard(account);
+                return;
+            }
+        }
+
+        JOptionPane.showMessageDialog(this,
+                "Account created successfully. You can now log in.",
+                "Register", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void signOut() {

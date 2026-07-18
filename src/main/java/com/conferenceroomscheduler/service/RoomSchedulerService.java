@@ -116,9 +116,9 @@ public class RoomSchedulerService {
     private void saveAccounts() {
         try {
             List<String> lines = new ArrayList<>();
-            lines.add("accountId,email,password,accountType,universityAccount,verified,identifier");
+            lines.add("accountId,email,password,accountType,universityAccount,verified,accountNumber");
             for (Account account : accounts) {
-                lines.add(String.join(",", account.getAccountId(), account.getEmail(), account.getPassword(), account.getAccountType(), Boolean.toString(account.isUniversityAccount()), Boolean.toString(account.isVerified()), account.getIdentifier()));
+                lines.add(String.join(",", account.getAccountId(), account.getEmail(), account.getPassword(), account.getAccountType(), Boolean.toString(account.isUniversityAccount()), Boolean.toString(account.isVerified()), account.getAccountNumber()));
             }
             Files.write(reservationsFile.getParent().resolve("accounts.csv"), lines);
         } catch (IOException e) {
@@ -153,7 +153,7 @@ public class RoomSchedulerService {
     }
 
     public Account createAccount(String email, String password, String accountType,
-                                 boolean universityAccount, String identifier) {
+                                 boolean universityAccount, String accountNumber) {
         AccountFactory factory = createAccountFactory(accountType);
         Account account = factory.createAccount(
                 "ACC" + (accounts.size() + 1),
@@ -162,7 +162,7 @@ public class RoomSchedulerService {
                 accountType,
                 universityAccount,
                 !universityAccount,
-                identifier
+                accountNumber
         );
         accounts.add(account);
         saveData();
@@ -173,7 +173,7 @@ public class RoomSchedulerService {
      * Req1 registration. Returns null on success, otherwise a user-facing error message.
      */
     public String registerAccount(String email, String password, String accountType,
-                                  boolean universityAccount) {
+                                  boolean universityAccount, String universityAccountNumber) {
         if (email == null || !isValidEmail(email)) {
             return "Invalid email address.";
         }
@@ -187,8 +187,16 @@ public class RoomSchedulerService {
             return "Unsupported account type. Choose student, faculty, staff, or partner.";
         }
 
-        String identifier = "ID" + (accounts.size() + 1);
-        createAccount(email.trim(), password, accountType.toLowerCase(), universityAccount, identifier);
+        String accountNumber;
+        if (universityAccount) {
+            if (universityAccountNumber == null || !universityAccountNumber.matches("\\d{9}")) {
+                return "University accounts must provide a valid 9-digit university account number.";
+            }
+            accountNumber = universityAccountNumber;
+        } else {
+            accountNumber = "ID" + (accounts.size() + 1);
+        }
+        createAccount(email.trim(), password, accountType.toLowerCase(), universityAccount, accountNumber);
         return null;
     }
 
