@@ -155,13 +155,15 @@ public class RoomSchedulerService {
     public Account createAccount(String email, String password, String accountType,
                                  boolean universityAccount, String accountNumber) {
         AccountFactory factory = createAccountFactory(accountType);
+        boolean verified = !universityAccount
+                || (accountNumber != null && accountNumber.matches("\\d{9}"));
         Account account = factory.createAccount(
                 "ACC" + (accounts.size() + 1),
                 email,
                 password,
                 accountType,
                 universityAccount,
-                !universityAccount,
+                verified,
                 accountNumber
         );
         accounts.add(account);
