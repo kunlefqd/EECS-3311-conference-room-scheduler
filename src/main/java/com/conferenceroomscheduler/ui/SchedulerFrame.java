@@ -351,8 +351,16 @@ public class SchedulerFrame extends JFrame {
         }
 
         Room selected = rooms.get(selectedIndex);
-        service.checkIn(selected.getRoomId());
-        outputArea.append("\nChecked in to: " + selected.getName());
+        boolean checkedIn = service.checkIn(selected.getRoomId());
+        if (checkedIn) {
+            outputArea.append("\nChecked in to: " + selected.getName());
+            String event = service.getLastCheckInEvent(selected.getRoomId());
+            if (event != null) {
+                outputArea.append("\n" + event);
+            }
+        } else {
+            outputArea.append("\nCannot check in: " + selected.getName() + " is not booked.");
+        }
     }
 
     private void refreshRooms() {

@@ -1,14 +1,13 @@
 package com.conferenceroomscheduler.service;
 
 import com.conferenceroomscheduler.model.Account;
-import com.conferenceroomscheduler.model.Badge;
 import com.conferenceroomscheduler.model.BookingRequest;
-import com.conferenceroomscheduler.model.OccupancySensor;
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
 import com.conferenceroomscheduler.patterns.AccountFactory;
 import com.conferenceroomscheduler.patterns.BookingContext;
+import com.conferenceroomscheduler.patterns.CheckInPublisher;
 import com.conferenceroomscheduler.patterns.CreditCardPaymentStrategy;
 import com.conferenceroomscheduler.patterns.ChiefEventCoordinator;
 import com.conferenceroomscheduler.patterns.Command;
@@ -20,7 +19,6 @@ import com.conferenceroomscheduler.patterns.InstitutionalBillingPaymentStrategy;
 import com.conferenceroomscheduler.patterns.PartnerFactory;
 import com.conferenceroomscheduler.patterns.PaymentStrategy;
 import com.conferenceroomscheduler.patterns.RoomFactory;
-import com.conferenceroomscheduler.patterns.RoomSensor;
 import com.conferenceroomscheduler.patterns.StaffFactory;
 import com.conferenceroomscheduler.patterns.StudentFactory;
 
@@ -48,9 +46,9 @@ public class RoomSchedulerService {
     private final Path reservationsFile = Paths.get("data/reservations.csv");
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private Account loggedInAccount;
+    private final CheckInPublisher checkInPublisher = new CheckInPublisher();
 
     public RoomSchedulerService() {
-        coordinator.registerObserver(new RoomSensor()); // TODO: call the correct sensor
         loadData();
     }
 
@@ -89,6 +87,7 @@ public class RoomSchedulerService {
                     Room room = new Room(values[0], values[1], Integer.parseInt(values[2]), Boolean.parseBoolean(values[3]), values[5], values[6]);
                     room.setClosedForMaintenance(Boolean.parseBoolean(values[4]));
                     rooms.add(room);
+                    checkInPublisher.registerObserver(room.getOccupancySensor());
                 }
             }
         } catch (IOException e) {
@@ -238,6 +237,7 @@ public class RoomSchedulerService {
         Room room = roomFactory.createRoom(roomId, name, capacity, building, roomNumber);
         if (room != null && room.isEnabled() && room.getCapacity() > 0) {
             rooms.add(room);
+            checkInPublisher.registerObserver(room.getOccupancySensor());
             saveData();
             coordinator.notifyObservers("Room created: " + room.getName());
         }
@@ -392,13 +392,24 @@ public class RoomSchedulerService {
         return loggedInAccount;
     }
     
-    public void checkIn(String roomId) {
+    public boolean checkIn(String roomId) {
         Room checkedInRoom = getRoomById(roomId);
-        Badge badge = loggedInAccount.getBadge();
-        if (checkedInRoom != null) {
-            OccupancySensor sensor = checkedInRoom.getOccupancySensor();
-            sensor.scanIdBadge(badge);
+        if (checkedInRoom == null || !isRoomBooked(roomId)) {
+            return false;
         }
+        checkedInRoom.checkIn(loggedInAccount);
+        checkInPublisher.notifyObservers(loggedInAccount);
+        return true;
+    }
+
+    public String getLastCheckInEvent(String roomId) {
+        Room room = getRoomById(roomId);
+        return room == null ? null : room.getOccupancySensor().getLastEvent();
+    }
+
+    private boolean isRoomBooked(String roomId) {
+        return reservations.stream()
+                .anyMatch(reservation -> reservation.getRoomId().equals(roomId) && !reservation.isCanceled());
     }
 
     private Room getRoomById(String roomId) {
