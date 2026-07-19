@@ -491,6 +491,7 @@ public class SchedulerFrame extends JFrame {
                 selectedPaymentMethod
         );
         currentBookingContext = new BookingContext(reservation);
+        currentBookingContext.request();
         service.addReservation(reservation);
         outputArea.append(
                 "\nCreated booking for: " + selected.getName()
