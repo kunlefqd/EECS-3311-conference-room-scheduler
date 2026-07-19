@@ -254,12 +254,20 @@ public class RoomSchedulerService {
         return room;
     }
 
+    private boolean isRoomOperational(String roomId) {
+        Room room = getRoomById(roomId);
+        return room != null && room.isEnabled() && !room.isClosedForMaintenance();
+    }
+
     public List<Room> getAllRooms() {
         return new ArrayList<>(rooms);
     }
 
     public void addReservation(Reservation reservation) {
         if (reservation == null) {
+            return;
+        }
+        if (!isRoomOperational(reservation.getRoomId())) {
             return;
         }
 
@@ -301,6 +309,9 @@ public class RoomSchedulerService {
     }
 
     public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end) {
+        if (!isRoomOperational(roomId)) {
+            return false;
+        }
         return reservations.stream()
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
                 .noneMatch(reservation ->
@@ -309,6 +320,9 @@ public class RoomSchedulerService {
     }
     
     public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end, String excludeReservationId) {
+        if (!isRoomOperational(roomId)) {
+            return false;
+        }
         return reservations.stream()
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
                 .filter(reservation -> !reservation.getReservationId().equals(excludeReservationId))
@@ -321,21 +335,35 @@ public class RoomSchedulerService {
         rooms.stream()
                 .filter(room -> room.getRoomId().equals(roomId))
                 .findFirst()
-                .ifPresent(room -> room.setEnabled(true));
+                .ifPresent(room -> {
+                    room.setEnabled(true);
+                    room.setClosedForMaintenance(false);
+                    saveData();
+                });
     }
 
     public void disableRoom(String roomId) {
         rooms.stream()
                 .filter(room -> room.getRoomId().equals(roomId))
                 .findFirst()
-                .ifPresent(room -> room.setEnabled(false));
+                .ifPresent(room -> {
+                    room.setEnabled(false);
+                    room.setClosedForMaintenance(false);
+                    saveData();
+                });
     }
 
     public void closeRoomForMaintenance(String roomId) {
         rooms.stream()
                 .filter(room -> room.getRoomId().equals(roomId))
                 .findFirst()
-                .ifPresent(room -> room.setClosedForMaintenance(true));
+                .ifPresent(room -> {
+                    room.setClosedForMaintenance(!room.isClosedForMaintenance());
+                    if (!room.isClosedForMaintenance()) {
+                        room.setEnabled(true);
+                    }
+                    saveData();
+                });
     }
 
     public void submitBookingRequest(BookingRequest request) {

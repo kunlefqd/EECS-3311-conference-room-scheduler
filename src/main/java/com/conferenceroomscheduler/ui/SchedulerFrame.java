@@ -35,6 +35,7 @@ public class SchedulerFrame extends JFrame {
     private final JTextField universityAccountNumberField = new JTextField();
     private final JButton registerButton = new JButton("Register");
     private final JButton addRoomButton = new JButton("Add Room");
+    private final JButton roomStateButton = new JButton("Enable/Disable Room");
     private final JButton reserveButton = new JButton("Create Booking");
     private final JComboBox<String> paymentMethodCombo = new JComboBox<>(new String[]{"CREDIT_CARD", "DEBIT_CARD", "INSTITUTIONAL_BILLING"});
     private final JButton maintenanceButton = new JButton("Close for Maintenance");
@@ -79,12 +80,12 @@ public class SchedulerFrame extends JFrame {
         topBar.add(welcomeLabel, BorderLayout.WEST);
         topBar.add(signOutButton, BorderLayout.EAST);
 
-        JPanel actionPanel = new JPanel(new GridLayout(1, 6, 5, 5));
+        JPanel actionPanel = new JPanel(new GridLayout(1, 8, 5, 5));
         actionPanel.add(reserveButton);
         actionPanel.add(paymentMethodCombo);
         actionPanel.add(addRoomButton);
+        actionPanel.add(roomStateButton);
         actionPanel.add(maintenanceButton);
-        actionPanel.add(generateAdminButton);
         actionPanel.add(checkInButton);
         actionPanel.add(refreshButton);
 
@@ -118,7 +119,8 @@ public class SchedulerFrame extends JFrame {
         loginButton.addActionListener(e -> login());
         passwordField.addActionListener(e -> login());
         registerButton.addActionListener(e -> register());
-        addRoomButton.addActionListener(e -> addSampleRoom());
+        addRoomButton.addActionListener(e -> addNewRoom());
+        roomStateButton.addActionListener(e -> toggleSelectedRoomState());
         reserveButton.addActionListener(e -> createSampleReservation());
         maintenanceButton.addActionListener(e -> closeRoomForMaintenance());
         generateAdminButton.addActionListener(e -> generateAdminAccount());
@@ -305,9 +307,11 @@ public class SchedulerFrame extends JFrame {
 
     private void updateActionVisibility() {
         boolean loggedIn = currentAccount != null;
+        boolean canManageRooms = loggedIn && "admin".equalsIgnoreCase(currentAccount.getAccountType());
         reserveButton.setVisible(loggedIn);
-        addRoomButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
-        maintenanceButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
+        addRoomButton.setVisible(canManageRooms);
+        roomStateButton.setVisible(canManageRooms);
+        maintenanceButton.setVisible(canManageRooms);
         generateAdminButton.setVisible(loggedIn && "coordinator".equalsIgnoreCase(currentAccount.getAccountType()));
         checkInButton.setVisible(loggedIn);
         refreshButton.setVisible(loggedIn);
@@ -318,15 +322,100 @@ public class SchedulerFrame extends JFrame {
         extendBookingButton.setVisible(loggedIn);
     }
 
-    private void addSampleRoom() {
+    private void addNewRoom() {
         if (currentAccount == null) {
             outputArea.setText("Please log in first.");
             return;
         }
-        int nextId = service.getAllRooms().size() + 1;
-        Room room = service.createRoom("R" + 100 + nextId, "Room " + nextId, 10 + nextId, "Main Building", String.valueOf(nextId));
-        outputArea.append("\nAdded room: " + room.getName());
+        if (!canManageRooms()) {
+            outputArea.setText("Only admins or staff can add rooms.");
+            return;
+        }
+
+        String roomName = JOptionPane.showInputDialog(this, "Room name:");
+        if (roomName == null || roomName.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        String capacityInput = JOptionPane.showInputDialog(this, "Capacity:");
+        if (capacityInput == null || capacityInput.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        int capacity;
+        try {
+            capacity = Integer.parseInt(capacityInput.trim());
+        } catch (NumberFormatException ex) {
+            outputArea.append("\nInvalid capacity entered.");
+            return;
+        }
+
+        String building = JOptionPane.showInputDialog(this, "Building:");
+        if (building == null || building.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        String roomNumber = JOptionPane.showInputDialog(this, "Room number:");
+        if (roomNumber == null || roomNumber.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        Room room = service.createRoom("R-" + System.currentTimeMillis(), roomName.trim(), capacity, building.trim(), roomNumber.trim());
+        if (room != null) {
+            outputArea.append("\nAdded room: " + room.getName() + " (" + room.getRoomId() + ")");
+        } else {
+            outputArea.append("\nCould not add room.");
+        }
         refreshRooms();
+    }
+
+    private void toggleSelectedRoomState() {
+        if (!canManageRooms()) {
+            outputArea.setText("Only admins can manage rooms.");
+            return;
+        }
+
+        Room selected = getSelectedRoom();
+        if (selected == null) {
+            return;
+        }
+
+        if (selected.isEnabled()) {
+            service.disableRoom(selected.getRoomId());
+            outputArea.append("\nDisabled room: " + selected.getName());
+        } else {
+            service.enableRoom(selected.getRoomId());
+            outputArea.append("\nEnabled room: " + selected.getName());
+        }
+        refreshRooms();
+    }
+
+    private boolean canManageRooms() {
+        return currentAccount != null && "admin".equalsIgnoreCase(currentAccount.getAccountType());
+    }
+
+    private Room getSelectedRoom() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return null;
+        }
+        List<Room> rooms = service.getAllRooms();
+        if (rooms.isEmpty()) {
+            outputArea.append("\nNo rooms available.");
+            return null;
+        }
+
+        int selectedIndex = roomList.getSelectedIndex();
+        if (selectedIndex < 0) {
+            outputArea.append("\nPlease select a room first.");
+            return null;
+        }
+
+        return rooms.get(selectedIndex);
     }
 
     private void createSampleReservation() {
@@ -347,6 +436,14 @@ public class SchedulerFrame extends JFrame {
         }
 
         Room selected = rooms.get(selectedIndex);
+        if (!selected.isEnabled() || selected.isClosedForMaintenance()) {
+            JOptionPane.showMessageDialog(this,
+                    "This room is currently disabled or under maintenance and cannot be booked.",
+                    "Room unavailable",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         double hourlyRate = service.calculateHourlyRate(currentAccount.getAccountType());
         LocalDateTime start = LocalDateTime.now().plusHours(1);
         LocalDateTime end = LocalDateTime.now().plusHours(2);
@@ -421,7 +518,11 @@ public class SchedulerFrame extends JFrame {
 
         Room selected = rooms.get(selectedIndex);
         service.closeRoomForMaintenance(selected.getRoomId());
-        outputArea.append("\nClosed room for maintenance: " + selected.getName());
+        if (selected.isClosedForMaintenance()) {
+            outputArea.append("\nClosed room for maintenance: " + selected.getName());
+        } else {
+            outputArea.append("\nRe-enabled room: " + selected.getName());
+        }
         refreshRooms();
     }
     
