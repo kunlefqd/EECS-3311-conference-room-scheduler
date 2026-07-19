@@ -229,10 +229,26 @@ public class SchedulerFrame extends JFrame {
     private void openDashboard(Account account) {
         currentAccount = account;
         welcomeLabel.setText("Signed in as " + account.getEmail() + " (" + account.getAccountType() + ")");
-        outputArea.setText("Welcome to the room booking system.");
+        showAccountPricingInfo();
         updateActionVisibility();
         refreshRooms();
         cardLayout.show(cards, "dashboard");
+    }
+
+    private void showAccountPricingInfo() {
+        if (currentAccount == null) {
+            return;
+        }
+        double hourlyRate = service.calculateHourlyRate(currentAccount.getAccountType());
+        outputArea.setText(
+                "Welcome to the room booking system.\n"
+                        + "Account type: " + currentAccount.getAccountType() + "\n"
+                        + "Your hourly rate: $" + String.format("%.2f", hourlyRate) + "\n"
+                        + "A one-hour deposit ($" + String.format("%.2f", hourlyRate)
+                        + ") is charged upfront when you book.\n"
+                        + "Check in within 30 minutes of the start time to apply that deposit to your final cost;"
+                        + " otherwise the deposit is lost."
+        );
     }
 
     private void register() {
@@ -331,22 +347,58 @@ public class SchedulerFrame extends JFrame {
         }
 
         Room selected = rooms.get(selectedIndex);
+        double hourlyRate = service.calculateHourlyRate(currentAccount.getAccountType());
+        LocalDateTime start = LocalDateTime.now().plusHours(1);
+        LocalDateTime end = LocalDateTime.now().plusHours(2);
+        double durationHours = Math.max(1.0,
+                java.time.Duration.between(start, end).toMinutes() / 60.0);
+        double depositAmount = hourlyRate;
+        double estimatedFinal = hourlyRate * durationHours;
         PaymentMethod selectedPaymentMethod = PaymentMethod.valueOf((String) paymentMethodCombo.getSelectedItem());
+
+        String confirmMessage =
+                "Confirm booking for " + selected.getName() + "?\n\n"
+                        + "Account type: " + currentAccount.getAccountType() + "\n"
+                        + "Hourly rate: $" + String.format("%.2f", hourlyRate) + "\n"
+                        + "Deposit due now (1 hour): $" + String.format("%.2f", depositAmount) + "\n"
+                        + "Estimated final amount: $" + String.format("%.2f", estimatedFinal) + "\n"
+                        + "Payment method: " + selectedPaymentMethod + "\n\n"
+                        + "A deposit fee will be charged upfront.\n"
+                        + "If you do not check in within 30 minutes of the start time, the deposit is lost.\n"
+                        + "Otherwise, it is applied to the final cost.";
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                confirmMessage,
+                "Confirm Booking",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirm != JOptionPane.OK_OPTION) {
+            outputArea.append("\nBooking cancelled.");
+            return;
+        }
+
         Reservation reservation = new Reservation(
                 "RES" + System.currentTimeMillis(),
                 selected.getRoomId(),
                 currentAccount.getAccountId(),
                 "Booking from GUI",
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusHours(2),
+                start,
+                end,
                 currentAccount.getAccountType(),
-                service.calculateHourlyRate(currentAccount.getAccountType()),
-                service.calculateHourlyRate(currentAccount.getAccountType()),
-                service.calculateHourlyRate(currentAccount.getAccountType()),
+                hourlyRate,
+                depositAmount,
+                estimatedFinal,
                 selectedPaymentMethod
         );
         service.addReservation(reservation);
-        outputArea.append("\nCreated booking for: " + selected.getName());
+        outputArea.append(
+                "\nCreated booking for: " + selected.getName()
+                        + "\nHourly rate: $" + String.format("%.2f", reservation.getHourlyRate())
+                        + "\nDeposit charged: $" + String.format("%.2f", reservation.getDepositAmount())
+                        + "\nFinal amount due: $" + String.format("%.2f", reservation.getFinalAmount())
+                        + "\nPayment method: " + reservation.getPaymentMethod()
+        );
         refreshRooms();
     }
 
@@ -413,15 +465,30 @@ public class SchedulerFrame extends JFrame {
         }
 
         Room selected = rooms.get(selectedIndex);
-        boolean checkedIn = service.checkIn(selected.getRoomId());
-        if (checkedIn) {
+        Reservation reservation = service.checkIn(selected.getRoomId());
+        if (reservation != null) {
             outputArea.append("\nChecked in to: " + selected.getName());
+            if (reservation.isDepositLost()) {
+                outputArea.append(
+                        "\nDeposit of $" + String.format("%.2f", reservation.getDepositAmount())
+                                + " was lost (checked in more than 30 minutes after start)."
+                                + "\nFinal amount due: $" + String.format("%.2f", reservation.getFinalAmount())
+                );
+            } else {
+                outputArea.append(
+                        "\nDeposit of $" + String.format("%.2f", reservation.getDepositAmount())
+                                + " applied to the final cost."
+                                + "\nRemaining amount due: $" + String.format("%.2f", reservation.getFinalAmount())
+                );
+            }
             String event = service.getLastCheckInEvent(selected.getRoomId());
             if (event != null) {
                 outputArea.append("\n" + event);
             }
+            refreshReservations();
         } else {
-            outputArea.append("\nCannot check in: " + selected.getName() + " is not booked.");
+            outputArea.append("\nCannot check in: " + selected.getName()
+                    + " has no active booking for your account.");
         }
     }
 
@@ -444,8 +511,17 @@ public class SchedulerFrame extends JFrame {
             String status = reservation.isCanceled() ? "Cancelled"
                     : reservation.isCheckedIn() ? "Checked In"
                     : "Confirmed";
-            reservationListModel.addElement(reservation.getReservationId() + " | " + reservation.getRoomId()
-                    + " | " + reservation.getStartTime() + " - " + reservation.getEndTime() + " | " + status);
+            String depositStatus = reservation.isDepositLost() ? "deposit lost"
+                    : reservation.isCheckedIn() ? "deposit applied"
+                    : "deposit pending";
+            reservationListModel.addElement(
+                    reservation.getReservationId() + " | " + reservation.getRoomId()
+                            + " | " + reservation.getStartTime() + " - " + reservation.getEndTime()
+                            + " | $" + String.format("%.2f", reservation.getHourlyRate()) + "/hr"
+                            + " | final $" + String.format("%.2f", reservation.getFinalAmount())
+                            + " | " + depositStatus
+                            + " | " + status
+            );
         }
     }
 

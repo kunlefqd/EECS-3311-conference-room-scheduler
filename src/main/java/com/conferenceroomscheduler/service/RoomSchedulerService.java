@@ -405,8 +405,27 @@ public class RoomSchedulerService {
         
         reservation.setEndTime(newEndTime);
         reservation.setExtended(true);
+        recalculateFinalAmount(reservation);
         saveData();
         return true;
+    }
+
+    private double durationHours(Reservation reservation) {
+        return Math.max(1.0,
+                Duration.between(reservation.getStartTime(), reservation.getEndTime()).toMinutes() / 60.0);
+    }
+
+    /**
+     * Recomputes the final amount from the current booking duration. Mirrors the
+     * pricing used at creation (hourlyRate x hours). If the guest has already
+     * checked in on time, the pre-paid deposit stays applied against the total.
+     */
+    private void recalculateFinalAmount(Reservation reservation) {
+        double total = reservation.getHourlyRate() * durationHours(reservation);
+        if (reservation.isCheckedIn() && !reservation.isDepositLost()) {
+            total = Math.max(0.0, total - reservation.getDepositAmount());
+        }
+        reservation.setFinalAmount(total);
     }
 
     public boolean cancelBooking(Reservation reservation) {
@@ -433,6 +452,7 @@ public class RoomSchedulerService {
         }
         reservation.setStartTime(newStart);
         reservation.setEndTime(newEnd);
+        recalculateFinalAmount(reservation);
         saveData();
         return true;
     }
@@ -451,24 +471,41 @@ public class RoomSchedulerService {
         return loggedInAccount;
     }
     
-    public boolean checkIn(String roomId) {
-        Room checkedInRoom = getRoomById(roomId);
-        if (checkedInRoom == null || !isRoomBooked(roomId)) {
-            return false;
+    /**
+     * Req4: check in to a room for the logged-in user's active reservation.
+     * If check-in is more than 30 minutes after start, the deposit is lost;
+     * otherwise the deposit is applied to the final cost.
+     */
+    public Reservation checkIn(String roomId) {
+        if (loggedInAccount == null) {
+            return null;
         }
+        Room checkedInRoom = getRoomById(roomId);
+        if (checkedInRoom == null) {
+            return null;
+        }
+
+        Reservation reservation = reservations.stream()
+                .filter(r -> r.getRoomId().equals(roomId))
+                .filter(r -> r.getUserId().equals(loggedInAccount.getAccountId()))
+                .filter(r -> !r.isCanceled())
+                .filter(r -> !r.isCheckedIn())
+                .findFirst()
+                .orElse(null);
+        if (reservation == null) {
+            return null;
+        }
+
+        applyCheckInRules(reservation, LocalDateTime.now());
         checkedInRoom.checkIn(loggedInAccount);
         checkInPublisher.notifyObservers(loggedInAccount);
-        return true;
+        saveData();
+        return reservation;
     }
 
     public String getLastCheckInEvent(String roomId) {
         Room room = getRoomById(roomId);
         return room == null ? null : room.getOccupancySensor().getLastEvent();
-    }
-
-    private boolean isRoomBooked(String roomId) {
-        return reservations.stream()
-                .anyMatch(reservation -> reservation.getRoomId().equals(roomId) && !reservation.isCanceled());
     }
 
     private Room getRoomById(String roomId) {
