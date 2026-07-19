@@ -8,19 +8,22 @@ public class Account {
     private boolean universityAccount;
     private boolean verified;
     private String identifier;
+    private String accountNumber;
+    private Badge badge;
 
     public Account() {
     }
 
     public Account(String accountId, String email, String password, String accountType,
-                   boolean universityAccount, boolean verified, String identifier) {
+                   boolean universityAccount, boolean verified, String accountNumber) {
         this.accountId = accountId;
         this.email = email;
         this.password = password;
         this.accountType = accountType;
         this.universityAccount = universityAccount;
         this.verified = verified;
-        this.identifier = identifier;
+        this.accountNumber = accountNumber;
+        this.badge = new Badge(email, accountId, verified);
     }
 
     public String getAccountId() {
@@ -71,11 +74,20 @@ public class Account {
         this.verified = verified;
     }
 
-    public String getIdentifier() {
-        return identifier;
+    public String getAccountNumber() {
+        return accountNumber;
     }
 
     public void setIdentifier(String identifier) {
         this.identifier = identifier;
+    }
+
+
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
+    }
+    
+    public Badge getBadge() {
+        return badge;
     }
 }

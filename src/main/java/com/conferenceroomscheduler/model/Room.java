@@ -10,10 +10,6 @@ public class Room {
     private String roomNumber;
     private OccupancySensor occupancySensor;
 
-    public Room() {
-        this.occupancySensor = new OccupancySensor();
-    }
-
     public Room(String roomId, String name, int capacity, boolean enabled,
                 String building, String roomNumber) {
         this.roomId = roomId;
@@ -22,7 +18,7 @@ public class Room {
         this.enabled = enabled;
         this.building = building;
         this.roomNumber = roomNumber;
-        this.occupancySensor = new OccupancySensor(roomId, false);
+        this.occupancySensor = new OccupancySensor(roomId, false, false);
     }
 
     public String getRoomId() {
@@ -87,5 +83,9 @@ public class Room {
 
     public void setOccupancySensor(OccupancySensor occupancySensor) {
         this.occupancySensor = occupancySensor;
+    }
+
+    public void checkIn(Account account) {
+        this.occupancySensor.setOccupied(true);
     }
 }

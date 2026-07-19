@@ -7,6 +7,7 @@ import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
 import com.conferenceroomscheduler.patterns.AccountFactory;
 import com.conferenceroomscheduler.patterns.BookingContext;
+import com.conferenceroomscheduler.patterns.CheckInPublisher;
 import com.conferenceroomscheduler.patterns.CreditCardPaymentStrategy;
 import com.conferenceroomscheduler.patterns.ChiefEventCoordinator;
 import com.conferenceroomscheduler.patterns.Command;
@@ -18,7 +19,6 @@ import com.conferenceroomscheduler.patterns.InstitutionalBillingPaymentStrategy;
 import com.conferenceroomscheduler.patterns.PartnerFactory;
 import com.conferenceroomscheduler.patterns.PaymentStrategy;
 import com.conferenceroomscheduler.patterns.RoomFactory;
-import com.conferenceroomscheduler.patterns.RoomSensor;
 import com.conferenceroomscheduler.patterns.StaffFactory;
 import com.conferenceroomscheduler.patterns.StudentFactory;
 
@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -45,9 +46,9 @@ public class RoomSchedulerService {
     private final Path reservationsFile = Paths.get("data/reservations.csv");
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private Account loggedInAccount;
+    private final CheckInPublisher checkInPublisher = new CheckInPublisher();
 
     public RoomSchedulerService() {
-        coordinator.registerObserver(new RoomSensor());
         loadData();
     }
 
@@ -86,6 +87,7 @@ public class RoomSchedulerService {
                     Room room = new Room(values[0], values[1], Integer.parseInt(values[2]), Boolean.parseBoolean(values[3]), values[5], values[6]);
                     room.setClosedForMaintenance(Boolean.parseBoolean(values[4]));
                     rooms.add(room);
+                    checkInPublisher.registerObserver(room.getOccupancySensor());
                 }
             }
         } catch (IOException e) {
@@ -115,9 +117,9 @@ public class RoomSchedulerService {
     private void saveAccounts() {
         try {
             List<String> lines = new ArrayList<>();
-            lines.add("accountId,email,password,accountType,universityAccount,verified,identifier");
+            lines.add("accountId,email,password,accountType,universityAccount,verified,accountNumber");
             for (Account account : accounts) {
-                lines.add(String.join(",", account.getAccountId(), account.getEmail(), account.getPassword(), account.getAccountType(), Boolean.toString(account.isUniversityAccount()), Boolean.toString(account.isVerified()), account.getIdentifier()));
+                lines.add(String.join(",", account.getAccountId(), account.getEmail(), account.getPassword(), account.getAccountType(), Boolean.toString(account.isUniversityAccount()), Boolean.toString(account.isVerified()), account.getAccountNumber()));
             }
             Files.write(reservationsFile.getParent().resolve("accounts.csv"), lines);
         } catch (IOException e) {
@@ -152,16 +154,18 @@ public class RoomSchedulerService {
     }
 
     public Account createAccount(String email, String password, String accountType,
-                                 boolean universityAccount, String identifier) {
+                                 boolean universityAccount, String accountNumber) {
         AccountFactory factory = createAccountFactory(accountType);
+        boolean verified = !universityAccount
+                || (accountNumber != null && accountNumber.matches("\\d{9}"));
         Account account = factory.createAccount(
                 "ACC" + (accounts.size() + 1),
                 email,
                 password,
                 accountType,
                 universityAccount,
-                !universityAccount,
-                identifier
+                verified,
+                accountNumber
         );
         accounts.add(account);
         saveData();
@@ -172,7 +176,7 @@ public class RoomSchedulerService {
      * Req1 registration. Returns null on success, otherwise a user-facing error message.
      */
     public String registerAccount(String email, String password, String accountType,
-                                  boolean universityAccount) {
+                                  boolean universityAccount, String universityAccountNumber) {
         if (email == null || !isValidEmail(email)) {
             return "Invalid email address.";
         }
@@ -186,8 +190,16 @@ public class RoomSchedulerService {
             return "Unsupported account type. Choose student, faculty, staff, or partner.";
         }
 
-        String identifier = "ID" + (accounts.size() + 1);
-        createAccount(email.trim(), password, accountType.toLowerCase(), universityAccount, identifier);
+        String accountNumber;
+        if (universityAccount) {
+            if (universityAccountNumber == null || !universityAccountNumber.matches("\\d{9}")) {
+                return "University accounts must provide a valid 9-digit university account number.";
+            }
+            accountNumber = universityAccountNumber;
+        } else {
+            accountNumber = "ID" + (accounts.size() + 1);
+        }
+        createAccount(email.trim(), password, accountType.toLowerCase(), universityAccount, accountNumber);
         return null;
     }
 
@@ -235,10 +247,16 @@ public class RoomSchedulerService {
         Room room = roomFactory.createRoom(roomId, name, capacity, building, roomNumber);
         if (room != null && room.isEnabled() && room.getCapacity() > 0) {
             rooms.add(room);
+            checkInPublisher.registerObserver(room.getOccupancySensor());
             saveData();
             coordinator.notifyObservers("Room created: " + room.getName());
         }
         return room;
+    }
+
+    private boolean isRoomOperational(String roomId) {
+        Room room = getRoomById(roomId);
+        return room != null && room.isEnabled() && !room.isClosedForMaintenance();
     }
 
     public List<Room> getAllRooms() {
@@ -246,6 +264,31 @@ public class RoomSchedulerService {
     }
 
     public void addReservation(Reservation reservation) {
+        if (reservation == null) {
+            return;
+        }
+        if (!isRoomOperational(reservation.getRoomId())) {
+            return;
+        }
+
+        double hourlyRate = reservation.getHourlyRate() > 0
+                ? reservation.getHourlyRate()
+                : calculateHourlyRate(reservation.getAccountType());
+        double depositAmount = reservation.getDepositAmount() > 0
+                ? reservation.getDepositAmount()
+                : hourlyRate;
+
+        double durationHours = Math.max(1.0, Duration.between(reservation.getStartTime(), reservation.getEndTime()).toMinutes() / 60.0);
+        double finalAmount = hourlyRate * durationHours;
+
+        reservation.setHourlyRate(hourlyRate);
+        reservation.setDepositAmount(depositAmount);
+        reservation.setFinalAmount(finalAmount);
+
+        if (reservation.getPaymentMethod() != null) {
+            processPayment(reservation.getReservationId(), depositAmount, reservation.getPaymentMethod());
+        }
+
         reservations.add(reservation);
         saveData();
         coordinator.notifyObservers("Reservation created: " + reservation.getTitle());
@@ -258,10 +301,31 @@ public class RoomSchedulerService {
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
                 .collect(Collectors.toList());
     }
+    
+    public List<Reservation> getReservationsForAccount(String accountId) {
+        return reservations.stream()
+                .filter(reservation -> reservation.getUserId().equals(accountId))
+                .collect(Collectors.toList());
+    }
 
     public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end) {
+        if (!isRoomOperational(roomId)) {
+            return false;
+        }
         return reservations.stream()
                 .filter(reservation -> reservation.getRoomId().equals(roomId))
+                .noneMatch(reservation ->
+                        (start.isBefore(reservation.getEndTime()) && end.isAfter(reservation.getStartTime()))
+                );
+    }
+    
+    public boolean isRoomAvailable(String roomId, LocalDateTime start, LocalDateTime end, String excludeReservationId) {
+        if (!isRoomOperational(roomId)) {
+            return false;
+        }
+        return reservations.stream()
+                .filter(reservation -> reservation.getRoomId().equals(roomId))
+                .filter(reservation -> !reservation.getReservationId().equals(excludeReservationId))
                 .noneMatch(reservation ->
                         (start.isBefore(reservation.getEndTime()) && end.isAfter(reservation.getStartTime()))
                 );
@@ -271,21 +335,35 @@ public class RoomSchedulerService {
         rooms.stream()
                 .filter(room -> room.getRoomId().equals(roomId))
                 .findFirst()
-                .ifPresent(room -> room.setEnabled(true));
+                .ifPresent(room -> {
+                    room.setEnabled(true);
+                    room.setClosedForMaintenance(false);
+                    saveData();
+                });
     }
 
     public void disableRoom(String roomId) {
         rooms.stream()
                 .filter(room -> room.getRoomId().equals(roomId))
                 .findFirst()
-                .ifPresent(room -> room.setEnabled(false));
+                .ifPresent(room -> {
+                    room.setEnabled(false);
+                    room.setClosedForMaintenance(false);
+                    saveData();
+                });
     }
 
     public void closeRoomForMaintenance(String roomId) {
         rooms.stream()
                 .filter(room -> room.getRoomId().equals(roomId))
                 .findFirst()
-                .ifPresent(room -> room.setClosedForMaintenance(true));
+                .ifPresent(room -> {
+                    room.setClosedForMaintenance(!room.isClosedForMaintenance());
+                    if (!room.isClosedForMaintenance()) {
+                        room.setEnabled(true);
+                    }
+                    saveData();
+                });
     }
 
     public void submitBookingRequest(BookingRequest request) {
@@ -329,22 +407,82 @@ public class RoomSchedulerService {
     }
 
     public void applyCheckInRules(Reservation reservation, LocalDateTime checkInTime) {
+        if (reservation == null) {
+            return;
+        }
+
+        reservation.setCheckedIn(true);
         if (checkInTime.isAfter(reservation.getStartTime().plusMinutes(30))) {
             reservation.setDepositLost(true);
         } else {
             reservation.setDepositLost(false);
+            reservation.setFinalAmount(Math.max(0.0, reservation.getFinalAmount() - reservation.getDepositAmount()));
         }
     }
 
-    public void extendBooking(Reservation reservation, LocalDateTime newEndTime) {
-        if (isRoomAvailable(reservation.getRoomId(), reservation.getEndTime(), newEndTime)) {
-            reservation.setEndTime(newEndTime);
-            reservation.setExtended(true);
+    public boolean extendBooking(Reservation reservation, LocalDateTime newEndTime) {
+        if (reservation.isCanceled()) {
+            return false;
         }
+        if (!newEndTime.isAfter(reservation.getEndTime())) {
+            return false;
+        }
+        if (!isRoomAvailable(reservation.getRoomId(), reservation.getEndTime(), newEndTime)) {
+            return false;
+        }
+        
+        reservation.setEndTime(newEndTime);
+        reservation.setExtended(true);
+        recalculateFinalAmount(reservation);
+        saveData();
+        return true;
     }
 
-    public void cancelBooking(Reservation reservation) {
+    private double durationHours(Reservation reservation) {
+        return Math.max(1.0,
+                Duration.between(reservation.getStartTime(), reservation.getEndTime()).toMinutes() / 60.0);
+    }
+
+    /**
+     * Recomputes the final amount from the current booking duration. Mirrors the
+     * pricing used at creation (hourlyRate x hours). If the guest has already
+     * checked in on time, the pre-paid deposit stays applied against the total.
+     */
+    private void recalculateFinalAmount(Reservation reservation) {
+        double total = reservation.getHourlyRate() * durationHours(reservation);
+        if (reservation.isCheckedIn() && !reservation.isDepositLost()) {
+            total = Math.max(0.0, total - reservation.getDepositAmount());
+        }
+        reservation.setFinalAmount(total);
+    }
+
+    public boolean cancelBooking(Reservation reservation) {
+        if (reservation.isCanceled()) {
+            return false;
+        }
+        if (LocalDateTime.now().isAfter(reservation.getStartTime())) {
+            return false;
+        }
         reservation.setCanceled(true);
+        saveData();
+        return true;
+    }
+
+    public boolean editBooking(Reservation reservation, LocalDateTime newStart, LocalDateTime newEnd) {
+        if (reservation.isCanceled()) {
+            return false;
+        }
+        if (LocalDateTime.now().isAfter(reservation.getStartTime())) {
+            return false;
+        }
+        if (!isRoomAvailable(reservation.getRoomId(), newStart, newEnd, reservation.getReservationId())) {
+            return false;
+        }
+        reservation.setStartTime(newStart);
+        reservation.setEndTime(newEnd);
+        recalculateFinalAmount(reservation);
+        saveData();
+        return true;
     }
 
     public Account authenticate(String email, String password) {
@@ -359,5 +497,51 @@ public class RoomSchedulerService {
 
     public Account getLoggedInAccount() {
         return loggedInAccount;
+    }
+    
+    /**
+     * Req4: check in to a room for the logged-in user's active reservation.
+     * If check-in is more than 30 minutes after start, the deposit is lost;
+     * otherwise the deposit is applied to the final cost.
+     */
+    public Reservation checkIn(String roomId) {
+        if (loggedInAccount == null) {
+            return null;
+        }
+        Room checkedInRoom = getRoomById(roomId);
+        if (checkedInRoom == null) {
+            return null;
+        }
+
+        Reservation reservation = reservations.stream()
+                .filter(r -> r.getRoomId().equals(roomId))
+                .filter(r -> r.getUserId().equals(loggedInAccount.getAccountId()))
+                .filter(r -> !r.isCanceled())
+                .filter(r -> !r.isCheckedIn())
+                .findFirst()
+                .orElse(null);
+        if (reservation == null) {
+            return null;
+        }
+
+        applyCheckInRules(reservation, LocalDateTime.now());
+        checkedInRoom.checkIn(loggedInAccount);
+        checkInPublisher.notifyObservers(loggedInAccount);
+        saveData();
+        return reservation;
+    }
+
+    public String getLastCheckInEvent(String roomId) {
+        Room room = getRoomById(roomId);
+        return room == null ? null : room.getOccupancySensor().getLastEvent();
+    }
+
+    private Room getRoomById(String roomId) {
+        for (Room room : rooms) {
+            if (room.getRoomId().equals(roomId)) {
+                return room;
+            }
+        }
+        return null;
     }
 }

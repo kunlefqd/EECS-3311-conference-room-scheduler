@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1">
+  <zoom_level>8</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>96</x>
+      <y>160</y>
+      <w>192</w>
+      <h>104</h>
+    </coordinates>
+    <panel_attributes>SchedulerFrame
+&lt;&lt;Invoker&gt;&gt;
+--
+-service: RoomSchedulerService
+--
++cancelSelectedBooking()
++editSelectedBooking()
++extendSelectedBooking()
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>416</x>
+      <y>176</y>
+      <w>160</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>&lt;&lt;interface&gt;&gt;
+Command
+--
++execute()
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>760</x>
+      <y>160</y>
+      <w>280</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>RoomSchedulerService
+&lt;&lt;Receiver&gt;&gt;
+--
++addReservation(reservation)
++cancelBooking(reservation): boolean
++editBooking(reservation, start, end): boolean
++extendBooking(reservation, newEnd): boolean
++createBookingWithCommand(reservation)
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>72</x>
+      <y>392</y>
+      <w>200</w>
+      <h>112</h>
+    </coordinates>
+    <panel_attributes>CreateBookingCommand
+--
+-service: RoomSchedulerService
+-reservation: Reservation
+--
++CreateBookingCommand(service, 
+  reservation)
++execute()
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>328</x>
+      <y>400</y>
+      <w>200</w>
+      <h>128</h>
+    </coordinates>
+    <panel_attributes>CancelBookingCommand
+--
+-service: RoomSchedulerService
+-reservation: Reservation
+-successful: boolean
+--
++CancelBookingCommand(service, reservation)
++execute()
++wasSuccessful(): boolean
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>584</x>
+      <y>400</y>
+      <w>264</w>
+      <h>144</h>
+    </coordinates>
+    <panel_attributes>EditBookingCommand
+--
+-service: RoomSchedulerService
+-reservation: Reservation
+-newStart: LocalDateTime
+-newEnd: LocalDateTime
+-successful: boolean
+--
++EditBookingCommand(service, reservation, 
+start, end)
++execute()
++wasSuccessful(): boolean
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>864</x>
+      <y>400</y>
+      <w>336</w>
+      <h>136</h>
+    </coordinates>
+    <panel_attributes>ExtendBookingCommand
+--
+-service: RoomSchedulerService
+-reservation: Reservation
+-newEnd: LocalDateTime
+-successful: boolean
+--
++ExtendBookingCommand(service, reservation, newEnd)
++execute()
++wasSuccessful(): boolean
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>456</x>
+      <y>664</y>
+      <w>192</w>
+      <h>88</h>
+    </coordinates>
+    <panel_attributes>Reservation
+--
+-reservationId: String
+-roomId: String
+-userId: String
+-startTime / endTime
+</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>280</x>
+      <y>200</y>
+      <w>152</w>
+      <h>32</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+creates &amp; executes</panel_attributes>
+    <additional_attributes>170.0;20.0;10.0;20.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>168</x>
+      <y>240</y>
+      <w>344</w>
+      <h>168</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>410.0;10.0;410.0;100.0;10.0;100.0;10.0;190.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>432</x>
+      <y>240</y>
+      <w>24</w>
+      <h>176</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;200.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>504</x>
+      <y>240</y>
+      <w>208</w>
+      <h>176</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;100.0;235.0;100.0;235.0;200.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>504</x>
+      <y>240</y>
+      <w>488</w>
+      <h>176</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;100.0;585.0;100.0;585.0;200.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>424</x>
+      <y>272</y>
+      <w>448</w>
+      <h>144</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+</panel_attributes>
+    <additional_attributes>10.0;160.0;10.0;90.0;540.0;90.0;540.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>168</x>
+      <y>272</y>
+      <w>712</w>
+      <h>136</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+</panel_attributes>
+    <additional_attributes>870.0;10.0;870.0;90.0;10.0;90.0;10.0;150.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>168</x>
+      <y>496</y>
+      <w>384</w>
+      <h>184</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+uses</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;120.0;455.0;120.0;455.0;210.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>432</x>
+      <y>520</y>
+      <w>128</w>
+      <h>160</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;100.0;140.0;100.0;140.0;180.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>552</x>
+      <y>536</y>
+      <w>152</w>
+      <h>144</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>170.0;10.0;170.0;90.0;10.0;90.0;10.0;160.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>552</x>
+      <y>536</y>
+      <w>432</w>
+      <h>144</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>520.0;10.0;520.0;90.0;10.0;90.0;10.0;160.0</additional_attributes>
+  </element>
+</diagram>

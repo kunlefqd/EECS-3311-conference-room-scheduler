@@ -1,11 +1,16 @@
 package com.conferenceroomscheduler.ui;
 
 import com.conferenceroomscheduler.model.Account;
+
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
 import com.conferenceroomscheduler.patterns.BookingContext;
 import com.conferenceroomscheduler.service.RoomSchedulerService;
+import com.conferenceroomscheduler.patterns.CancelBookingCommand;
+import com.conferenceroomscheduler.patterns.EditBookingCommand;
+import com.conferenceroomscheduler.patterns.ExtendBookingCommand;
+
 
 import javax.swing.*;
 import java.awt.*;
@@ -27,13 +32,24 @@ public class SchedulerFrame extends JFrame {
             "student", "faculty", "staff", "partner"
     });
     private final JCheckBox universityAccountCheckBox = new JCheckBox("University account (requires verification)");
+    private final JLabel universityAccountNumberLabel = new JLabel("University Account Number");
+    private final JTextField universityAccountNumberField = new JTextField();
     private final JButton registerButton = new JButton("Register");
     private final JButton addRoomButton = new JButton("Add Room");
+    private final JButton roomStateButton = new JButton("Enable/Disable Room");
     private final JButton reserveButton = new JButton("Create Booking");
+    private final JComboBox<String> paymentMethodCombo = new JComboBox<>(new String[]{"CREDIT_CARD", "DEBIT_CARD", "INSTITUTIONAL_BILLING"});
     private final JButton maintenanceButton = new JButton("Close for Maintenance");
     private final JButton generateAdminButton = new JButton("Generate Admin Account");
+    private final JButton checkInButton = new JButton("Check In");
     private final JButton refreshButton = new JButton("Refresh");
     private final JButton signOutButton = new JButton("Sign Out");
+    private final DefaultListModel<String> reservationListModel = new DefaultListModel<>();
+    private final JList<String> reservationList = new JList<>(reservationListModel);
+    private final JButton cancelBookingButton = new JButton("Cancel Booking");
+    private final JButton editBookingButton = new JButton("Edit Booking");
+    private final JButton extendBookingButton = new JButton("Extend Booking");
+    
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cards = new JPanel(cardLayout);
     private final JLabel welcomeLabel = new JLabel("Please sign in to continue");
@@ -66,11 +82,13 @@ public class SchedulerFrame extends JFrame {
         topBar.add(welcomeLabel, BorderLayout.WEST);
         topBar.add(signOutButton, BorderLayout.EAST);
 
-        JPanel actionPanel = new JPanel(new GridLayout(1, 4, 5, 5));
+        JPanel actionPanel = new JPanel(new GridLayout(1, 8, 5, 5));
         actionPanel.add(reserveButton);
+        actionPanel.add(paymentMethodCombo);
         actionPanel.add(addRoomButton);
+        actionPanel.add(roomStateButton);
         actionPanel.add(maintenanceButton);
-        actionPanel.add(generateAdminButton);
+        actionPanel.add(checkInButton);
         actionPanel.add(refreshButton);
 
         JPanel leftPanel = new JPanel(new BorderLayout(5, 5));
@@ -78,9 +96,22 @@ public class SchedulerFrame extends JFrame {
         leftPanel.add(new JLabel("Available Rooms"), BorderLayout.NORTH);
         leftPanel.add(new JScrollPane(roomList), BorderLayout.CENTER);
 
+        JPanel bookingsPanel = new JPanel(new BorderLayout(5, 5));
+        bookingsPanel.add(new JLabel("My Bookings"), BorderLayout.NORTH);
+        bookingsPanel.add(new JScrollPane(reservationList), BorderLayout.CENTER);
+        JPanel bookingActionsPanel = new JPanel(new GridLayout(1, 3, 5, 5));
+        bookingActionsPanel.add(cancelBookingButton);
+        bookingActionsPanel.add(editBookingButton);
+        bookingActionsPanel.add(extendBookingButton);
+        bookingsPanel.add(bookingActionsPanel, BorderLayout.SOUTH);
+        bookingsPanel.setPreferredSize(new Dimension(0, 160));
+
         JPanel rightPanel = new JPanel(new BorderLayout(5, 5));
         rightPanel.add(new JLabel("Event Services Actions"), BorderLayout.NORTH);
-        rightPanel.add(outputArea, BorderLayout.CENTER);
+        rightPanel.add(bookingsPanel, BorderLayout.CENTER);
+        JScrollPane outputScrollPane = new JScrollPane(outputArea);
+        outputScrollPane.setPreferredSize(new Dimension(0, 160));
+        rightPanel.add(outputScrollPane, BorderLayout.SOUTH);
 
         dashboardPanel.add(topBar, BorderLayout.NORTH);
         dashboardPanel.add(actionPanel, BorderLayout.SOUTH);
@@ -90,12 +121,17 @@ public class SchedulerFrame extends JFrame {
         loginButton.addActionListener(e -> login());
         passwordField.addActionListener(e -> login());
         registerButton.addActionListener(e -> register());
-        addRoomButton.addActionListener(e -> addSampleRoom());
+        addRoomButton.addActionListener(e -> addNewRoom());
+        roomStateButton.addActionListener(e -> toggleSelectedRoomState());
         reserveButton.addActionListener(e -> createSampleReservation());
         maintenanceButton.addActionListener(e -> closeRoomForMaintenance());
         generateAdminButton.addActionListener(e -> generateAdminAccount());
+        checkInButton.addActionListener(e -> checkIn());
         refreshButton.addActionListener(e -> refreshRooms());
         signOutButton.addActionListener(e -> signOut());
+        cancelBookingButton.addActionListener(e -> cancelSelectedBooking());
+        editBookingButton.addActionListener(e -> editSelectedBooking());
+        extendBookingButton.addActionListener(e -> extendSelectedBooking());
 
         outputArea.setEditable(false);
         outputArea.setLineWrap(true);
@@ -138,7 +174,7 @@ public class SchedulerFrame extends JFrame {
         JPanel registerPanel = new JPanel(new BorderLayout(10, 10));
         registerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JPanel registerForm = new JPanel(new GridLayout(6, 2, 8, 8));
+        JPanel registerForm = new JPanel(new GridLayout(7, 2, 8, 8));
         registerForm.add(new JLabel("Email"));
         registerForm.add(registerEmailField);
         registerForm.add(new JLabel("Password"));
@@ -149,8 +185,13 @@ public class SchedulerFrame extends JFrame {
         registerForm.add(accountTypeCombo);
         registerForm.add(new JLabel(""));
         registerForm.add(universityAccountCheckBox);
+        registerForm.add(universityAccountNumberLabel);
+        registerForm.add(universityAccountNumberField);
         registerForm.add(new JLabel(""));
         registerForm.add(registerButton);
+
+        universityAccountCheckBox.addActionListener(e -> updateUniversityAccountNumberVisibility());
+        updateUniversityAccountNumberVisibility();
 
         JTextArea registerInfo = new JTextArea(
                 "Create an account with a unique valid email and a strong password "
@@ -166,6 +207,17 @@ public class SchedulerFrame extends JFrame {
         return registerPanel;
     }
 
+    private void updateUniversityAccountNumberVisibility() {
+        boolean show = universityAccountCheckBox.isSelected();
+        universityAccountNumberLabel.setVisible(show);
+        universityAccountNumberField.setVisible(show);
+        if (!show) {
+            universityAccountNumberField.setText("");
+        }
+        universityAccountNumberLabel.getParent().revalidate();
+        universityAccountNumberLabel.getParent().repaint();
+    }
+
     private void login() {
         String email = emailField.getText();
         String password = new String(passwordField.getPassword());
@@ -175,12 +227,32 @@ public class SchedulerFrame extends JFrame {
                     "Login", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        openDashboard(account);
+    }
+
+    private void openDashboard(Account account) {
         currentAccount = account;
         welcomeLabel.setText("Signed in as " + account.getEmail() + " (" + account.getAccountType() + ")");
-        outputArea.setText("Welcome to the room booking system.");
+        showAccountPricingInfo();
         updateActionVisibility();
         refreshRooms();
         cardLayout.show(cards, "dashboard");
+    }
+
+    private void showAccountPricingInfo() {
+        if (currentAccount == null) {
+            return;
+        }
+        double hourlyRate = service.calculateHourlyRate(currentAccount.getAccountType());
+        outputArea.setText(
+                "Welcome to the room booking system.\n"
+                        + "Account type: " + currentAccount.getAccountType() + "\n"
+                        + "Your hourly rate: $" + String.format("%.2f", hourlyRate) + "\n"
+                        + "A one-hour deposit ($" + String.format("%.2f", hourlyRate)
+                        + ") is charged upfront when you book.\n"
+                        + "Check in within 30 minutes of the start time to apply that deposit to your final cost;"
+                        + " otherwise the deposit is lost."
+        );
     }
 
     private void register() {
@@ -189,6 +261,7 @@ public class SchedulerFrame extends JFrame {
         String confirmPassword = new String(confirmPasswordField.getPassword());
         String accountType = (String) accountTypeCombo.getSelectedItem();
         boolean universityAccount = universityAccountCheckBox.isSelected();
+        String universityAccountNumber = universityAccountNumberField.getText().trim();
 
         if (!password.equals(confirmPassword)) {
             JOptionPane.showMessageDialog(this, "Passwords do not match.",
@@ -196,23 +269,32 @@ public class SchedulerFrame extends JFrame {
             return;
         }
 
-        String error = service.registerAccount(email, password, accountType, universityAccount);
+        String error = service.registerAccount(
+                email, password, accountType, universityAccount, universityAccountNumber);
         if (error != null) {
             JOptionPane.showMessageDialog(this, error, "Register", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        String successMessage = "Account created successfully. You can now log in.";
-        if (universityAccount) {
-            successMessage = "Account created. Verification required before full access.";
-        }
-        JOptionPane.showMessageDialog(this, successMessage, "Register", JOptionPane.INFORMATION_MESSAGE);
-
         registerEmailField.setText("");
         registerPasswordField.setText("");
         confirmPasswordField.setText("");
+        universityAccountNumberField.setText("");
         universityAccountCheckBox.setSelected(false);
         accountTypeCombo.setSelectedIndex(0);
+        updateUniversityAccountNumberVisibility();
+
+        if (universityAccount) {
+            Account account = service.authenticate(email, password);
+            if (account != null) {
+                openDashboard(account);
+                return;
+            }
+        }
+
+        JOptionPane.showMessageDialog(this,
+                "Account created successfully. You can now log in.",
+                "Register", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void signOut() {
@@ -227,24 +309,115 @@ public class SchedulerFrame extends JFrame {
 
     private void updateActionVisibility() {
         boolean loggedIn = currentAccount != null;
+        boolean canManageRooms = loggedIn && "admin".equalsIgnoreCase(currentAccount.getAccountType());
         reserveButton.setVisible(loggedIn);
-        addRoomButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
-        maintenanceButton.setVisible(loggedIn && "staff".equalsIgnoreCase(currentAccount.getAccountType()));
+        addRoomButton.setVisible(canManageRooms);
+        roomStateButton.setVisible(canManageRooms);
+        maintenanceButton.setVisible(canManageRooms);
         generateAdminButton.setVisible(loggedIn && "coordinator".equalsIgnoreCase(currentAccount.getAccountType()));
+        checkInButton.setVisible(loggedIn);
         refreshButton.setVisible(loggedIn);
         signOutButton.setVisible(loggedIn);
         welcomeLabel.setVisible(loggedIn);
+        cancelBookingButton.setVisible(loggedIn);
+        editBookingButton.setVisible(loggedIn);
+        extendBookingButton.setVisible(loggedIn);
     }
 
-    private void addSampleRoom() {
+    private void addNewRoom() {
         if (currentAccount == null) {
             outputArea.setText("Please log in first.");
             return;
         }
-        int nextId = service.getAllRooms().size() + 1;
-        Room room = service.createRoom("R" + 100 + nextId, "Room " + nextId, 10 + nextId, "Main Building", String.valueOf(nextId));
-        outputArea.append("\nAdded room: " + room.getName());
+        if (!canManageRooms()) {
+            outputArea.setText("Only admins or staff can add rooms.");
+            return;
+        }
+
+        String roomName = JOptionPane.showInputDialog(this, "Room name:");
+        if (roomName == null || roomName.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        String capacityInput = JOptionPane.showInputDialog(this, "Capacity:");
+        if (capacityInput == null || capacityInput.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        int capacity;
+        try {
+            capacity = Integer.parseInt(capacityInput.trim());
+        } catch (NumberFormatException ex) {
+            outputArea.append("\nInvalid capacity entered.");
+            return;
+        }
+
+        String building = JOptionPane.showInputDialog(this, "Building:");
+        if (building == null || building.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        String roomNumber = JOptionPane.showInputDialog(this, "Room number:");
+        if (roomNumber == null || roomNumber.isBlank()) {
+            outputArea.append("\nRoom addition cancelled.");
+            return;
+        }
+
+        Room room = service.createRoom("R-" + System.currentTimeMillis(), roomName.trim(), capacity, building.trim(), roomNumber.trim());
+        if (room != null) {
+            outputArea.append("\nAdded room: " + room.getName() + " (" + room.getRoomId() + ")");
+        } else {
+            outputArea.append("\nCould not add room.");
+        }
         refreshRooms();
+    }
+
+    private void toggleSelectedRoomState() {
+        if (!canManageRooms()) {
+            outputArea.setText("Only admins can manage rooms.");
+            return;
+        }
+
+        Room selected = getSelectedRoom();
+        if (selected == null) {
+            return;
+        }
+
+        if (selected.isEnabled()) {
+            service.disableRoom(selected.getRoomId());
+            outputArea.append("\nDisabled room: " + selected.getName());
+        } else {
+            service.enableRoom(selected.getRoomId());
+            outputArea.append("\nEnabled room: " + selected.getName());
+        }
+        refreshRooms();
+    }
+
+    private boolean canManageRooms() {
+        return currentAccount != null && "admin".equalsIgnoreCase(currentAccount.getAccountType());
+    }
+
+    private Room getSelectedRoom() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return null;
+        }
+        List<Room> rooms = service.getAllRooms();
+        if (rooms.isEmpty()) {
+            outputArea.append("\nNo rooms available.");
+            return null;
+        }
+
+        int selectedIndex = roomList.getSelectedIndex();
+        if (selectedIndex < 0) {
+            outputArea.append("\nPlease select a room first.");
+            return null;
+        }
+
+        return rooms.get(selectedIndex);
     }
 
     private void createSampleReservation() {
@@ -265,24 +438,69 @@ public class SchedulerFrame extends JFrame {
         }
 
         Room selected = rooms.get(selectedIndex);
+        if (!selected.isEnabled() || selected.isClosedForMaintenance()) {
+            JOptionPane.showMessageDialog(this,
+                    "This room is currently disabled or under maintenance and cannot be booked.",
+                    "Room unavailable",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        double hourlyRate = service.calculateHourlyRate(currentAccount.getAccountType());
+        LocalDateTime start = LocalDateTime.now().plusHours(1);
+        LocalDateTime end = LocalDateTime.now().plusHours(2);
+        double durationHours = Math.max(1.0,
+                java.time.Duration.between(start, end).toMinutes() / 60.0);
+        double depositAmount = hourlyRate;
+        double estimatedFinal = hourlyRate * durationHours;
+        PaymentMethod selectedPaymentMethod = PaymentMethod.valueOf((String) paymentMethodCombo.getSelectedItem());
+
+        String confirmMessage =
+                "Confirm booking for " + selected.getName() + "?\n\n"
+                        + "Account type: " + currentAccount.getAccountType() + "\n"
+                        + "Hourly rate: $" + String.format("%.2f", hourlyRate) + "\n"
+                        + "Deposit due now (1 hour): $" + String.format("%.2f", depositAmount) + "\n"
+                        + "Estimated final amount: $" + String.format("%.2f", estimatedFinal) + "\n"
+                        + "Payment method: " + selectedPaymentMethod + "\n\n"
+                        + "A deposit fee will be charged upfront.\n"
+                        + "If you do not check in within 30 minutes of the start time, the deposit is lost.\n"
+                        + "Otherwise, it is applied to the final cost.";
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                confirmMessage,
+                "Confirm Booking",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirm != JOptionPane.OK_OPTION) {
+            outputArea.append("\nBooking cancelled.");
+            return;
+        }
+
         Reservation reservation = new Reservation(
                 "RES" + System.currentTimeMillis(),
                 selected.getRoomId(),
                 currentAccount.getAccountId(),
                 "Booking from GUI",
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusHours(2),
+                start,
+                end,
                 currentAccount.getAccountType(),
-                service.calculateHourlyRate(currentAccount.getAccountType()),
-                service.calculateHourlyRate(currentAccount.getAccountType()),
-                service.calculateHourlyRate(currentAccount.getAccountType()),
-                PaymentMethod.CREDIT_CARD
+                hourlyRate,
+                depositAmount,
+                estimatedFinal,
+                selectedPaymentMethod
         );
         currentBookingContext = new BookingContext(reservation);
         service.addReservation(reservation);
-        outputArea.append("\nCreated booking for: " + selected.getName());
         outputArea.append(
-            "\nBooking Status: " + currentBookingContext.getStatus());
+                "\nCreated booking for: " + selected.getName()
+                        + "\nHourly rate: $" + String.format("%.2f", reservation.getHourlyRate())
+                        + "\nDeposit charged: $" + String.format("%.2f", reservation.getDepositAmount())
+                        + "\nFinal amount due: $" + String.format("%.2f", reservation.getFinalAmount())
+                        + "\nPayment method: " + reservation.getPaymentMethod() + "\nBooking Status: " + currentBookingContext.getStatus());
+        
+        refreshRooms();
+
     }
 
     private void closeRoomForMaintenance() {
@@ -304,7 +522,11 @@ public class SchedulerFrame extends JFrame {
 
         Room selected = rooms.get(selectedIndex);
         service.closeRoomForMaintenance(selected.getRoomId());
-        outputArea.append("\nClosed room for maintenance: " + selected.getName());
+        if (selected.isClosedForMaintenance()) {
+            outputArea.append("\nClosed room for maintenance: " + selected.getName());
+        } else {
+            outputArea.append("\nRe-enabled room: " + selected.getName());
+        }
         refreshRooms();
     }
     
@@ -330,6 +552,51 @@ public class SchedulerFrame extends JFrame {
         outputArea.append("\nGenerated admin account: " + admin.getEmail() + " (" + admin.getAccountId() + ")");
     }
 
+    private void checkIn() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return;
+        }
+        List<Room> rooms = service.getAllRooms();
+        if (rooms.isEmpty()) {
+            outputArea.append("\nNo rooms available to check in to.");
+            return;
+        }
+
+        int selectedIndex = roomList.getSelectedIndex();
+        if (selectedIndex < 0) {
+            outputArea.append("\nPlease select a room first.");
+            return;
+        }
+
+        Room selected = rooms.get(selectedIndex);
+        Reservation reservation = service.checkIn(selected.getRoomId());
+        if (reservation != null) {
+            outputArea.append("\nChecked in to: " + selected.getName());
+            if (reservation.isDepositLost()) {
+                outputArea.append(
+                        "\nDeposit of $" + String.format("%.2f", reservation.getDepositAmount())
+                                + " was lost (checked in more than 30 minutes after start)."
+                                + "\nFinal amount due: $" + String.format("%.2f", reservation.getFinalAmount())
+                );
+            } else {
+                outputArea.append(
+                        "\nDeposit of $" + String.format("%.2f", reservation.getDepositAmount())
+                                + " applied to the final cost."
+                                + "\nRemaining amount due: $" + String.format("%.2f", reservation.getFinalAmount())
+                );
+            }
+            String event = service.getLastCheckInEvent(selected.getRoomId());
+            if (event != null) {
+                outputArea.append("\n" + event);
+            }
+            refreshReservations();
+        } else {
+            outputArea.append("\nCannot check in: " + selected.getName()
+                    + " has no active booking for your account.");
+        }
+    }
+
     private void refreshRooms() {
         roomListModel.clear();
         for (Room room : service.getAllRooms()) {
@@ -337,5 +604,109 @@ public class SchedulerFrame extends JFrame {
             String maintenance = room.isClosedForMaintenance() ? " | Maintenance" : "";
             roomListModel.addElement(room.getName() + " (" + room.getRoomId() + ") - " + status + maintenance);
         }
+        refreshReservations();
+    }
+
+    private void refreshReservations() {
+        reservationListModel.clear();
+        if (currentAccount == null) {
+            return;
+        }
+        for (Reservation reservation : service.getReservationsForAccount(currentAccount.getAccountId())) {
+            String status = reservation.isCanceled() ? "Cancelled"
+                    : reservation.isCheckedIn() ? "Checked In"
+                    : "Confirmed";
+            String depositStatus = reservation.isDepositLost() ? "deposit lost"
+                    : reservation.isCheckedIn() ? "deposit applied"
+                    : "deposit pending";
+            reservationListModel.addElement(
+                    reservation.getReservationId() + " | " + reservation.getRoomId()
+                            + " | " + reservation.getStartTime() + " - " + reservation.getEndTime()
+                            + " | $" + String.format("%.2f", reservation.getHourlyRate()) + "/hr"
+                            + " | final $" + String.format("%.2f", reservation.getFinalAmount())
+                            + " | " + depositStatus
+                            + " | " + status
+            );
+        }
+    }
+
+    private Reservation getSelectedReservation() {
+        if (currentAccount == null) {
+            outputArea.setText("Please log in first.");
+            return null;
+        }
+        int index = reservationList.getSelectedIndex();
+        List<Reservation> myReservations = service.getReservationsForAccount(currentAccount.getAccountId());
+        if (index < 0 || index >= myReservations.size()) {
+            outputArea.append("\nPlease select a booking first.");
+            return null;
+        }
+        return myReservations.get(index);
+    }
+
+    private void cancelSelectedBooking() {
+        Reservation reservation = getSelectedReservation();
+        if (reservation == null) {
+            return;
+        }
+        CancelBookingCommand command = new CancelBookingCommand(service, reservation);
+        command.execute();
+        outputArea.append("\n" + (command.wasSuccessful()
+                ? "Cancelled booking: " + reservation.getReservationId()
+                : "Could not cancel booking " + reservation.getReservationId() + " (already cancelled or past start time)."));
+        refreshReservations();
+    }
+
+    private void editSelectedBooking() {
+        Reservation reservation = getSelectedReservation();
+        if (reservation == null) {
+            return;
+        }
+        String minutesInput = JOptionPane.showInputDialog(this,
+                "Shift booking by how many minutes? (e.g. 30, or -30 to move earlier)");
+        if (minutesInput == null || minutesInput.isBlank()) {
+            return;
+        }
+        long minutes;
+        try {
+            minutes = Long.parseLong(minutesInput.trim());
+        } catch (NumberFormatException ex) {
+            outputArea.append("\nInvalid number entered.");
+            return;
+        }
+        LocalDateTime newStart = reservation.getStartTime().plusMinutes(minutes);
+        LocalDateTime newEnd = reservation.getEndTime().plusMinutes(minutes);
+        
+        EditBookingCommand command = new EditBookingCommand(service, reservation, newStart, newEnd);
+        command.execute();
+        outputArea.append("\n" + (command.wasSuccessful()
+                ? "Edited booking: " + reservation.getReservationId()
+                : "Could not edit booking " + reservation.getReservationId() + " (past start time, cancelled, or room unavailable)."));
+        refreshReservations();
+    }
+
+    private void extendSelectedBooking() {
+        Reservation reservation = getSelectedReservation();
+        if (reservation == null) {
+            return;
+        }
+        String minutesInput = JOptionPane.showInputDialog(this, "Extend booking by how many minutes?");
+        if (minutesInput == null || minutesInput.isBlank()) {
+            return;
+        }
+        long minutes;
+        try {
+            minutes = Long.parseLong(minutesInput.trim());
+        } catch (NumberFormatException ex) {
+            outputArea.append("\nInvalid number entered.");
+            return;
+        }
+        LocalDateTime newEnd = reservation.getEndTime().plusMinutes(minutes);
+        ExtendBookingCommand command = new ExtendBookingCommand(service, reservation, newEnd);
+        command.execute();
+        outputArea.append("\n" + (command.wasSuccessful()
+                ? "Extended booking: " + reservation.getReservationId()
+                : "Could not extend booking " + reservation.getReservationId() + " (cancelled, or room unavailable, or not a later time)."));
+        refreshReservations();
     }
 }
