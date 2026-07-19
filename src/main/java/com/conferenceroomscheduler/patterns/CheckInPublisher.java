@@ -9,10 +9,12 @@ public class CheckInPublisher {
 
     public void registerObserver(CheckInObserver observer) {
         observers.add(observer);
+        observer.setSubject(this);
     }
 
     public void removeObserver(CheckInObserver observer) {
         observers.remove(observer);
+        observer.setSubject(null);
     }
 
     public void notifyObservers(Account account) {
