@@ -39,7 +39,7 @@ public class SchedulerFrame extends JFrame {
     private final JButton roomStateButton = new JButton("Enable/Disable Room");
     private final JButton reserveButton = new JButton("Create Booking");
     private final JComboBox<String> paymentMethodCombo = new JComboBox<>(new String[]{"CREDIT_CARD", "DEBIT_CARD", "INSTITUTIONAL_BILLING"});
-    private final JButton maintenanceButton = new JButton("Close for Maintenance");
+    private final JButton maintenanceButton = new JButton("Maintenance/Repairs");
     private final JButton generateAdminButton = new JButton("Generate Admin Account");
     private final JButton checkInButton = new JButton("Check In");
     private final JButton refreshButton = new JButton("Refresh");
@@ -330,43 +330,54 @@ public class SchedulerFrame extends JFrame {
             return;
         }
         if (!canManageRooms()) {
-            outputArea.setText("Only admins or staff can add rooms.");
+            outputArea.setText("Only admins can add rooms.");
             return;
         }
 
-        String roomName = JOptionPane.showInputDialog(this, "Room name:");
-        if (roomName == null || roomName.isBlank()) {
+        JTextField roomIdField = new JTextField("R-" + System.currentTimeMillis());
+        JTextField roomNameField = new JTextField();
+        JTextField capacityField = new JTextField("10");
+        JTextField buildingField = new JTextField();
+        JTextField roomNumberField = new JTextField();
+
+        JPanel roomForm = new JPanel(new GridLayout(0, 2, 8, 8));
+        roomForm.add(new JLabel("Room ID:"));
+        roomForm.add(roomIdField);
+        roomForm.add(new JLabel("Room Name:"));
+        roomForm.add(roomNameField);
+        roomForm.add(new JLabel("Capacity:"));
+        roomForm.add(capacityField);
+        roomForm.add(new JLabel("Building:"));
+        roomForm.add(buildingField);
+        roomForm.add(new JLabel("Room Number:"));
+        roomForm.add(roomNumberField);
+
+        int result = JOptionPane.showConfirmDialog(this, roomForm, "Add Room", JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) {
             outputArea.append("\nRoom addition cancelled.");
             return;
         }
 
-        String capacityInput = JOptionPane.showInputDialog(this, "Capacity:");
-        if (capacityInput == null || capacityInput.isBlank()) {
-            outputArea.append("\nRoom addition cancelled.");
+        String roomId = roomIdField.getText().trim();
+        String roomName = roomNameField.getText().trim();
+        String capacityInput = capacityField.getText().trim();
+        String building = buildingField.getText().trim();
+        String roomNumber = roomNumberField.getText().trim();
+
+        if (roomId.isBlank() || roomName.isBlank() || building.isBlank() || roomNumber.isBlank()) {
+            JOptionPane.showMessageDialog(this, "Room ID, name, building, and room number are required.", "Invalid room details", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         int capacity;
         try {
-            capacity = Integer.parseInt(capacityInput.trim());
+            capacity = Integer.parseInt(capacityInput);
         } catch (NumberFormatException ex) {
-            outputArea.append("\nInvalid capacity entered.");
+            JOptionPane.showMessageDialog(this, "Capacity must be a whole number.", "Invalid room details", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        String building = JOptionPane.showInputDialog(this, "Building:");
-        if (building == null || building.isBlank()) {
-            outputArea.append("\nRoom addition cancelled.");
-            return;
-        }
-
-        String roomNumber = JOptionPane.showInputDialog(this, "Room number:");
-        if (roomNumber == null || roomNumber.isBlank()) {
-            outputArea.append("\nRoom addition cancelled.");
-            return;
-        }
-
-        Room room = service.createRoom("R-" + System.currentTimeMillis(), roomName.trim(), capacity, building.trim(), roomNumber.trim());
+        Room room = service.createRoom(roomId, roomName, capacity, building, roomNumber);
         if (room != null) {
             outputArea.append("\nAdded room: " + room.getName() + " (" + room.getRoomId() + ")");
         } else {
@@ -524,7 +535,7 @@ public class SchedulerFrame extends JFrame {
         Room selected = rooms.get(selectedIndex);
         service.closeRoomForMaintenance(selected.getRoomId());
         if (selected.isClosedForMaintenance()) {
-            outputArea.append("\nClosed room for maintenance: " + selected.getName());
+            outputArea.append("\nClosed room for maintenance/repairs: " + selected.getName());
         } else {
             outputArea.append("\nRe-enabled room: " + selected.getName());
         }
@@ -602,7 +613,7 @@ public class SchedulerFrame extends JFrame {
         roomListModel.clear();
         for (Room room : service.getAllRooms()) {
             String status = room.isEnabled() ? "Active" : "Disabled";
-            String maintenance = room.isClosedForMaintenance() ? " | Maintenance" : "";
+            String maintenance = room.isClosedForMaintenance() ? " | Maintenance/Repairs" : "";
             roomListModel.addElement(room.getName() + " (" + room.getRoomId() + ") - " + status + maintenance);
         }
         refreshReservations();

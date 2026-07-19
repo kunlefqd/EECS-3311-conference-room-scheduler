@@ -245,7 +245,7 @@ public class RoomSchedulerService {
 
     public Room createRoom(String roomId, String name, int capacity, String building, String roomNumber) {
         Room room = roomFactory.createRoom(roomId, name, capacity, building, roomNumber);
-        if (room != null && room.isEnabled() && room.getCapacity() > 0) {
+        if (room != null && room.getCapacity() > 0) {
             rooms.add(room);
             checkInPublisher.registerObserver(room.getOccupancySensor());
             saveData();
