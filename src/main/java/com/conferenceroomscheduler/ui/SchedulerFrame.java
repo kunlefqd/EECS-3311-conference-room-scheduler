@@ -86,6 +86,7 @@ public class SchedulerFrame extends JFrame {
         actionPanel.add(reserveButton);
         actionPanel.add(paymentMethodCombo);
         actionPanel.add(addRoomButton);
+        actionPanel.add(generateAdminButton);
         actionPanel.add(roomStateButton);
         actionPanel.add(maintenanceButton);
         actionPanel.add(checkInButton);
