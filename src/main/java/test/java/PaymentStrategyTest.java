@@ -1,9 +1,15 @@
 package test.java;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
 
-import com.conferenceroomscheduler.patterns.*;
+import com.conferenceroomscheduler.patterns.CreditCardPaymentStrategy;
+import com.conferenceroomscheduler.patterns.DebitCardPaymentStrategy;
+import com.conferenceroomscheduler.patterns.InstitutionalBillingPaymentStrategy;
+import com.conferenceroomscheduler.patterns.PaymentStrategy;
 
 public class PaymentStrategyTest {
 

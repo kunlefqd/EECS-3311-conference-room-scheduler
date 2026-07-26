@@ -1,9 +1,9 @@
 package com.conferenceroomscheduler;
 
+import javax.swing.SwingUtilities;
+
 import com.conferenceroomscheduler.service.RoomSchedulerService;
 import com.conferenceroomscheduler.ui.SchedulerFrame;
-
-import javax.swing.SwingUtilities;
 
 public class Main {
     public static void main(String[] args) {
