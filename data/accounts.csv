@@ -1,0 +1,10 @@
+accountId,email,password,accountType,universityAccount,verified,accountNumber
+ACC1,student@yorku.ca,Student123!,student,true,true,21987654
+ACC2,faculty@yorku.ca,Faculty123!,faculty,true,true,ABC123
+ACC3,staff@yorku.ca,Staff123!,staff,true,true,EMP100
+ACC4,partner@external.com,Partner123!,partner,false,true,ORG789
+ACC5,coordinator@yorku.ca,Coordinator123!,coordinator,true,true,COORD001
+ACC6,test12@gmail.com,Test1234!,student,true,true,123456789
+ACC6,student2@yorku.ca,Student1234!,student,true,false,21987653
+ACC8,admin@yorku.ca,Admin123!,admin,false,true,ADMIN-1
+ACC9,reze@gmail.com,1Kenneth123@,student,false,true,ID9
