@@ -1,10 +1,10 @@
-package com.conferenceroomscheduler.model;
+package test.java;
 
+import com.conferenceroomscheduler.model.BadgeScan;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
-
 public class BadgeScanTest {
 
     private BadgeScan badgeScan;

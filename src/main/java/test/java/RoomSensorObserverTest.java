@@ -1,5 +1,6 @@
-package com.conferenceroomscheduler.patterns;
+package test.java;
 
+import com.conferenceroomscheduler.patterns.RoomSensorObserver;
 import org.junit.Before;
 import org.junit.Test;
 

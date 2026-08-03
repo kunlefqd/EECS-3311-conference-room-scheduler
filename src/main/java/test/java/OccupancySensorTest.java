@@ -1,4 +1,7 @@
-package com.conferenceroomscheduler.model;
+package test.java;
+
+import com.conferenceroomscheduler.model.Account;
+import com.conferenceroomscheduler.model.OccupancySensor;
 
 import org.junit.Before;
 import org.junit.Test;

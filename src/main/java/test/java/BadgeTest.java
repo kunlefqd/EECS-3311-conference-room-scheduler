@@ -1,5 +1,6 @@
-package com.conferenceroomscheduler.model;
+package test.java;
 
+import com.conferenceroomscheduler.model.Badge;
 import org.junit.Before;
 import org.junit.Test;
 

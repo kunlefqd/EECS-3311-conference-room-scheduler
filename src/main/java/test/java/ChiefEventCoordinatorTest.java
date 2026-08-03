@@ -1,6 +1,8 @@
-package com.conferenceroomscheduler.patterns;
+package test.java;
 
 import com.conferenceroomscheduler.model.Account;
+import com.conferenceroomscheduler.patterns.ChiefEventCoordinator;
+import com.conferenceroomscheduler.patterns.RoomSensorObserver;
 import org.junit.Before;
 import org.junit.Test;
 
