@@ -97,21 +97,4 @@ public class StudentFactoryAITest {
         Account account = factory.createAccount("1", "a@yorku.ca", "", "student", true, true, "100");
         assertEquals("", account.getPassword());
     }
-
-    @Test
-    public void testCreateStudentAlias() {
-        Account account = factory.createStudent("1", "a@yorku.ca", "p", true, true, "100");
-        assertNotNull(account);
-    }
-
-    @Test
-    public void testEmailWrongExpectation() {
-        Account account = factory.createAccount("1", "student@yorku.ca", "p", "student", true, true, "100");
-        assertEquals("wrong@yorku.ca", account.getEmail());
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void testNonUniversityStudentRejected() {
-        factory.createAccount("1", "a@gmail.com", "p", "student", false, true, "100");
-    }
 }

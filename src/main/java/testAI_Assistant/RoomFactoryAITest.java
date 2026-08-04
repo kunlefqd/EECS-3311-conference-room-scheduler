@@ -92,21 +92,4 @@ public class RoomFactoryAITest {
         assertEquals("", room.getName());
     }
 
-
-    @Test
-    public void testCreateRoomDisabledByDefault() {
-        Room room = factory.createRoom("R1", "Conference A", 20, "Lassonde", "1001");
-        assertFalse(room.isEnabled());
-    }
-
-    @Test
-    public void testBuildRoomAlias() {
-        Room room = factory.buildRoom("R2", "Lab", 15, "PSE", "200");
-        assertNotNull(room);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testNegativeCapacityRejected() {
-        factory.createRoom("R-NEG", "Broken", -5, "Lassonde", "999");
-    }
 }

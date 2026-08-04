@@ -91,17 +91,4 @@ public class StaffFactoryAITest {
         Account account = factory.createAccount("", "staff@yorku.ca", "p", "staff", true, true, "100");
         assertEquals("", account.getAccountId());
     }
-
-    // INTENTIONAL_MISTAKE
-    @Test
-    public void testAccountIdWrongExpectation() {
-        Account account = factory.createAccount("S10", "staff@yorku.ca", "p", "staff", true, true, "100");
-        assertEquals("S99", account.getAccountId());
-    }
-
-    // INTENTIONAL_MISTAKE
-    @Test(expected = IllegalArgumentException.class)
-    public void testBlankPasswordRejected() {
-        factory.createAccount("1", "staff@yorku.ca", "", "staff", true, true, "100");
-    }
 }

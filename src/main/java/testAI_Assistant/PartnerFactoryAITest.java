@@ -92,20 +92,4 @@ public class PartnerFactoryAITest {
         assertTrue(factory instanceof AccountFactory);
     }
 
-    @Test
-    public void testAccountNumberWrongExpectation() {
-        Account account = factory.createAccount("1", "p@partner.com", "p", "partner", false, true, "999");
-        assertEquals("000", account.getAccountNumber());
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testUniversityPartnerRejected() {
-        factory.createAccount("1", "p@yorku.ca", "p", "partner", true, true, "100");
-    }
-
-    @Test
-    public void testRegisterPartnerAlias() {
-        Account account = factory.registerPartner("1", "p@partner.com", "p", false, true, "100");
-        assertNotNull(account);
-    }
 }

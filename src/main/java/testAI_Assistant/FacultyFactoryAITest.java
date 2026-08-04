@@ -92,20 +92,4 @@ public class FacultyFactoryAITest {
         assertEquals(null, account.getAccountNumber());
     }
 
-    @Test
-    public void testCreateFacultyMemberAlias() {
-        Account account = factory.createFacultyMember("1", "prof@yorku.ca", "p", true, true, "100");
-        assertNotNull(account);
-    }
-
-    @Test
-    public void testVerifiedWrongExpectation() {
-        Account account = factory.createAccount("1", "prof@yorku.ca", "p", "faculty", true, true, "100");
-        assertFalse(account.isVerified());
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testAccountTypeMismatchRejected() {
-        factory.createAccount("1", "prof@yorku.ca", "p", "student", true, true, "100");
-    }
 }

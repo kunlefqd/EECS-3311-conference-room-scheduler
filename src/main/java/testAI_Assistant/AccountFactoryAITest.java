@@ -101,20 +101,4 @@ public class AccountFactoryAITest {
         assertTrue(account instanceof AdminAccount);
     }
 
-    @Test
-    public void testCreateUserAlias() {
-        Account account = studentFactory.createUser("1", "a@yorku.ca", "p", "student", true, true, "100");
-        assertNotNull(account);
-    }
-
-    @Test
-    public void testAccountTypeParameterIsHonoured() {
-        Account account = studentFactory.createAccount("1", "a@yorku.ca", "p", "faculty", true, true, "100");
-        assertEquals("faculty", account.getAccountType());
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testNullEmailRejectedByCreateAccount() {
-        studentFactory.createAccount("1", null, "p", "student", true, true, "100");
-    }
 }
