@@ -7,9 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.conferenceroomscheduler.model.Account;
-import com.conferenceroomscheduler.model.Account;
-
 public class AccountTest {
 
     @Test
@@ -20,49 +17,49 @@ public class AccountTest {
 
     @Test
     public void testAccountId() {
-        Account account = new Account("1","a","p",true,true,"100");
+        Account account = new Account("1","a","p", "regular",true,true,"100");
         assertEquals("1", account.getAccountId());
     }
 
     @Test
     public void testEmail() {
-        Account account = new Account("1","email@test.com","p",true,true,"100");
+        Account account = new Account("1","email@test.com","p", "regular",true,true,"100");
         assertEquals("email@test.com", account.getEmail());
     }
 
     @Test
     public void testPassword() {
-        Account account = new Account("1","a","password",true,true,"100");
+        Account account = new Account("1","a","password", "regular",true,true,"100");
         assertEquals("password", account.getPassword());
     }
 
     @Test
     public void testAccountTypeIsBaseAccount() {
-        Account account = new Account("1","a","p",true,true,"100");
-        assertEquals("admin", account.getAccountType());
+        Account account = new Account("1","a","p", "regular",true,true,"100");
+        assertEquals("regular", account.getAccountType());
     }
 
     @Test
     public void testUniversityAccount() {
-        Account account = new Account("1","a","p",true,true,"100");
+        Account account = new Account("1","a","p", "regular",true,true,"100");
         assertTrue(account.isUniversityAccount());
     }
 
     @Test
     public void testVerified() {
-        Account account = new Account("1","a","p",true,false,"100");
+        Account account = new Account("1","a","p", "regular", true,false,"100");
         assertFalse(account.isVerified());
     }
 
     @Test
     public void testAccountNumber() {
-        Account account = new Account("1","a","p",true,true,"999");
+        Account account = new Account("1","a","p", "regular", true,true,"999");
         assertEquals("999", account.getAccountNumber());
     }
 
     @Test
     public void testBadgeCreated() {
-        Account account = new Account("1","a","p",true,true,"999");
+        Account account = new Account("1","a","p", "regular",true,true,"999");
         assertNotNull(account.getBadge());
     }
 
