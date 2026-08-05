@@ -1,27 +1,5 @@
 package com.conferenceroomscheduler.service;
 
-import com.conferenceroomscheduler.model.Account;
-import com.conferenceroomscheduler.model.BookingRequest;
-import com.conferenceroomscheduler.model.PaymentMethod;
-import com.conferenceroomscheduler.model.Reservation;
-import com.conferenceroomscheduler.model.Room;
-import com.conferenceroomscheduler.patterns.AccountFactory;
-import com.conferenceroomscheduler.patterns.BookingContext;
-import com.conferenceroomscheduler.patterns.CheckInPublisher;
-import com.conferenceroomscheduler.patterns.CreditCardPaymentStrategy;
-import com.conferenceroomscheduler.patterns.ChiefEventCoordinator;
-import com.conferenceroomscheduler.patterns.Command;
-import com.conferenceroomscheduler.patterns.ConfirmedBookingState;
-import com.conferenceroomscheduler.patterns.CreateBookingCommand;
-import com.conferenceroomscheduler.patterns.DebitCardPaymentStrategy;
-import com.conferenceroomscheduler.patterns.FacultyFactory;
-import com.conferenceroomscheduler.patterns.InstitutionalBillingPaymentStrategy;
-import com.conferenceroomscheduler.patterns.PartnerFactory;
-import com.conferenceroomscheduler.patterns.PaymentStrategy;
-import com.conferenceroomscheduler.patterns.RoomFactory;
-import com.conferenceroomscheduler.patterns.StaffFactory;
-import com.conferenceroomscheduler.patterns.StudentFactory;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +11,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.conferenceroomscheduler.model.Account;
+import com.conferenceroomscheduler.model.BookingRequest;
+import com.conferenceroomscheduler.model.PaymentMethod;
+import com.conferenceroomscheduler.model.Reservation;
+import com.conferenceroomscheduler.model.Room;
+import com.conferenceroomscheduler.patterns.AccountFactory;
+import com.conferenceroomscheduler.patterns.BookingContext;
+import com.conferenceroomscheduler.patterns.CheckInPublisher;
+import com.conferenceroomscheduler.patterns.ChiefEventCoordinator;
+import com.conferenceroomscheduler.patterns.Command;
+import com.conferenceroomscheduler.patterns.CreateBookingCommand;
+import com.conferenceroomscheduler.patterns.CreditCardPaymentStrategy;
+import com.conferenceroomscheduler.patterns.DebitCardPaymentStrategy;
+import com.conferenceroomscheduler.patterns.FacultyFactory;
+import com.conferenceroomscheduler.patterns.InstitutionalBillingPaymentStrategy;
+import com.conferenceroomscheduler.patterns.PartnerFactory;
+import com.conferenceroomscheduler.patterns.PaymentStrategy;
+import com.conferenceroomscheduler.patterns.RoomFactory;
+import com.conferenceroomscheduler.patterns.StaffFactory;
+import com.conferenceroomscheduler.patterns.StudentFactory;
 
 public class RoomSchedulerService {
     private final List<Room> rooms = new ArrayList<>();

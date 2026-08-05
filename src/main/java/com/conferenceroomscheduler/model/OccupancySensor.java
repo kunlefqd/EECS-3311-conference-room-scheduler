@@ -1,13 +1,13 @@
 package com.conferenceroomscheduler.model;
 
-import com.conferenceroomscheduler.patterns.CheckInObserver;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+
+import com.conferenceroomscheduler.patterns.CheckInObserver;
 
 public class OccupancySensor extends CheckInObserver {
     private static final Path CHECK_INS_FILE = Paths.get("data/check-ins.csv");
