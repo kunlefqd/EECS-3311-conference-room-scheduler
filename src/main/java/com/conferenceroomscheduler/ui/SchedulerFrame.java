@@ -1,21 +1,37 @@
 package com.conferenceroomscheduler.ui;
 
-import com.conferenceroomscheduler.model.Account;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.time.LocalDateTime;
+import java.util.List;
 
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+
+import com.conferenceroomscheduler.model.Account;
 import com.conferenceroomscheduler.model.PaymentMethod;
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.model.Room;
 import com.conferenceroomscheduler.patterns.BookingContext;
-import com.conferenceroomscheduler.service.RoomSchedulerService;
 import com.conferenceroomscheduler.patterns.CancelBookingCommand;
 import com.conferenceroomscheduler.patterns.EditBookingCommand;
 import com.conferenceroomscheduler.patterns.ExtendBookingCommand;
-
-
-import javax.swing.*;
-import java.awt.*;
-import java.time.LocalDateTime;
-import java.util.List;
+import com.conferenceroomscheduler.service.RoomSchedulerService;
 
 public class SchedulerFrame extends JFrame {
     private final RoomSchedulerService service;

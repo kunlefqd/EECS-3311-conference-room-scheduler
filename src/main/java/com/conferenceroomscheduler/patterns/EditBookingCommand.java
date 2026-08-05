@@ -1,9 +1,9 @@
 package com.conferenceroomscheduler.patterns;
 
+import java.time.LocalDateTime;
+
 import com.conferenceroomscheduler.model.Reservation;
 import com.conferenceroomscheduler.service.RoomSchedulerService;
-
-import java.time.LocalDateTime;
 
 public class EditBookingCommand implements Command {
     private final RoomSchedulerService service;
