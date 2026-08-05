@@ -1,8 +1,9 @@
 package com.conferenceroomscheduler.patterns;
 
-import com.conferenceroomscheduler.model.Account;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.conferenceroomscheduler.model.Account;
 
 public class ChiefEventCoordinator {
     private static final ChiefEventCoordinator INSTANCE = new ChiefEventCoordinator();

@@ -3,7 +3,7 @@ package com.conferenceroomscheduler.patterns;
 public class CompletedBookingState implements BookingState {
     @Override
     public void handle(BookingContext context) {
-        System.out.println("Booking complete.");
+    	System.out.println("Booking complete.");
     } 
     
     @Override
