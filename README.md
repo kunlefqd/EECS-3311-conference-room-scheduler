@@ -4,6 +4,7 @@
 
 D2 was completed on the basicStucture branch then pulled to main. For D2 alone go to the basicStructure branch. D3 was completed on the D3-basicStructure branch then pulled to main. D3 is essentially the same as D2 with the only additions being the test files.
 
+## Information
 
 This project now includes a Java GUI-based conference room scheduler inspired by the UML design and D1/D2 requirements, with:
 - core domain classes for rooms, reservations, users, and booking requests
