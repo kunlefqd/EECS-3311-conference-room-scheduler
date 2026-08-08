@@ -1,6 +1,6 @@
 # Conference Room Scheduler
 
-D2 was completed on the basicStucture branch then pulled to main.
+D2 was completed on the basicStucture branch then pulled to main. For D2 alone go to the basicStructure branch.
 
 D3 was completed on the D3-basicStructure branch then pulled to main.
 
