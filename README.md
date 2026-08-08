@@ -1,5 +1,10 @@
 # Conference Room Scheduler
 
+D2 was completed on the basicStucture branch then pulled to main.
+
+D3 was completed on the D3-basicStructure branch then pulled to main.
+
+
 This project now includes a Java GUI-based conference room scheduler inspired by the UML design and D1/D2 requirements, with:
 - core domain classes for rooms, reservations, users, and booking requests
 - the six requested design patterns implemented directly in the codebase:
