@@ -1,8 +1,8 @@
 # Conference Room Scheduler
 
-## D2 was completed on the basicStucture branch then pulled to main. For D2 alone go to the basicStructure branch.
+## Which branches to use for grading.
 
-## D3 was completed on the D3-basicStructure branch then pulled to main.
+D2 was completed on the basicStucture branch then pulled to main. For D2 alone go to the basicStructure branch. D3 was completed on the D3-basicStructure branch then pulled to main. D3 is essentially the same as D2 with the only additions being the test files.
 
 
 This project now includes a Java GUI-based conference room scheduler inspired by the UML design and D1/D2 requirements, with:
