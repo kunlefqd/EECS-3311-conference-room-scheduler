@@ -1,8 +1,8 @@
 # Conference Room Scheduler
 
-D2 was completed on the basicStucture branch then pulled to main. For D2 alone go to the basicStructure branch.
+## D2 was completed on the basicStucture branch then pulled to main. For D2 alone go to the basicStructure branch.
 
-D3 was completed on the D3-basicStructure branch then pulled to main.
+## D3 was completed on the D3-basicStructure branch then pulled to main.
 
 
 This project now includes a Java GUI-based conference room scheduler inspired by the UML design and D1/D2 requirements, with:
